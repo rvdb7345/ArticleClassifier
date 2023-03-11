@@ -26,7 +26,8 @@ def parse_document_classification(path="../../data/"):
 
     # Define fixed data structure
     columns = ["file_name", "pui", "title", "keywords", "abstract", \
-               "abstract_2", "authors", "labels_m", "labels_a"]
+               "abstract_2", "authors", "organization", "labels_m",
+               "labels_a"]
 
     # Load classification labels into a list, it can be Check tags, Subheadings, etc.
     # Note: uncomment different sections to yield different set of labels.
@@ -78,9 +79,22 @@ def parse_document_classification(path="../../data/"):
                         "indexed-name": author.find('ce:indexed-name', prefix_map).text if author.find('ce:indexed-name', prefix_map) is not None else None,
                         "surname": author.find('ce:surname', prefix_map).text if author.find('ce:surname', prefix_map) is not None else None,
                         "given-name": author.find('ce:given-name', prefix_map).text if author.find('ce:given-name', prefix_map) is not None else None,
+                        "orcid": author.attrib.get("orcid", None),
+                        "seq": author.attrib["seq"]
 
                     }
                     for author in item.findall(".//ns0:author-group//ns0:author", prefix_map)
+                ]
+
+            organizations = \
+                [
+                    {
+                        "organization_country": affiliation.attrib.get('country', None),
+                        "organization_name": affiliation.find('ns0:organization', prefix_map).text if affiliation.find('ns0:organization', prefix_map) is not None else None,
+                        "organization_city": affiliation.find('ns0:city', prefix_map).text if affiliation.find('ns0:city', prefix_map) is not None else None,
+
+                    }
+                    for affiliation in item.findall(".//ns0:author-group//ns0:affiliation", prefix_map)
                 ]
 
             # Get labels, e.g. check tags/subheadings (_m - manual, _a - automated)
@@ -115,7 +129,8 @@ def parse_document_classification(path="../../data/"):
             tags_m = ",".join([t for t in tags_m])
 
             # Append data and one hot encoded manual check tags
-            data.append([file, pui, title, keywords, abs_1, abs_2, authors, tags_m, tags_a] + labels)
+            data.append([file, pui, title, keywords, abs_1, abs_2, authors, organizations,
+                         tags_m, tags_a] + labels)
 
         try:
             df = pd.concat([df, pd.DataFrame(data, columns=columns)], ignore_index=True)
