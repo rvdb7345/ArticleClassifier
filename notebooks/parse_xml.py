@@ -22,11 +22,13 @@ def parse_document_classification(path="../../data/"):
     # Define XML namespaces
     prefix_map = {"ns0": "http://www.elsevier.com/xml/ani/ani",
                   "ns1": "http://www.elsevier.com/xml/ani/common",
-                  "ce": "http://www.elsevier.com/xml/ani/common"}
+                  "ce": "http://www.elsevier.com/xml/ani/common",
+                  "ait": "http://www.elsevier.com/xml/ani/ait"}
 
     # Define fixed data structure
     columns = ["file_name", "pui", "title", "keywords", "abstract", \
-               "abstract_2", "authors", "organization", "labels_m",
+               "abstract_2", "authors", "organization", "chemicals", "num_refs",
+               "date-delivered", "labels_m",
                "labels_a"]
 
     # Load classification labels into a list, it can be Check tags, Subheadings, etc.
@@ -37,7 +39,7 @@ def parse_document_classification(path="../../data/"):
     # columns += clf_labels
 
     # - subheadings
-    clf_labels = pd.read_csv(path + "subheadings.csv", sep=";", header=None).iloc[:, 0].tolist()
+    clf_labels = pd.read_csv(path + "paulas_labels.csv", sep=";", header=None).iloc[:, 0].tolist()
     columns += clf_labels
 
     # - check tags groups (not for pipeline - used for experimentation)
@@ -60,6 +62,10 @@ def parse_document_classification(path="../../data/"):
 
             # Extract text input, e.g. title, abstract, keywords
             title = "".join(item.find(".//ns0:titletext", prefix_map).itertext())
+
+            data_delivered = f"{item.find('.//ait:process-info//ait:date-delivered', prefix_map).attrib['year']}-" \
+                             f"{item.find('.//ait:process-info//ait:date-delivered', prefix_map).attrib['month']}-" \
+                             f"{item.find('.//ait:process-info//ait:date-delivered', prefix_map).attrib['day']}"
 
             try:
                 keywords = item.findall(".//ns0:author-keywords//ns0:author-keyword", prefix_map)
@@ -97,6 +103,19 @@ def parse_document_classification(path="../../data/"):
                     for affiliation in item.findall(".//ns0:author-group//ns0:affiliation", prefix_map)
                 ]
 
+            try:
+                chemicals = item.findall(".//ns0:head//ns0:enhancement//ns0:chemicalgroup//ns0:chemicals//ns0:chemical//ns0:chemical-name", prefix_map)
+                chemicals = " ".join([k.text for k in chemicals])
+            except:
+                chemicals = ""
+
+            # num_refs = item.find(".//ns0:bibliography", prefix_map).attrib["refcount"]
+
+            try:
+                num_refs = item.find(".//ns0:bibliography", prefix_map).attrib["refcount"]
+            except:
+                num_refs = ""
+
             # Get labels, e.g. check tags/subheadings (_m - manual, _a - automated)
             terms_med_m = item.findall(".//ns0:descriptors[@type='MED']//ns0:mainterm", prefix_map)
             terms_drg_m = item.findall(".//ns0:descriptors[@type='DRG']//ns0:mainterm", prefix_map)
@@ -129,7 +148,8 @@ def parse_document_classification(path="../../data/"):
             tags_m = ",".join([t for t in tags_m])
 
             # Append data and one hot encoded manual check tags
-            data.append([file, pui, title, keywords, abs_1, abs_2, authors, organizations,
+            data.append([file, pui, title, keywords, abs_1, abs_2, authors, organizations, chemicals,
+                         num_refs, data_delivered,
                          tags_m, tags_a] + labels)
 
         try:
@@ -137,12 +157,11 @@ def parse_document_classification(path="../../data/"):
         except:
             df = pd.DataFrame(data, columns=columns)
 
-        break
         print(f"File {file} done.")
 
     # Save the DF
     df.drop_duplicates(subset=["pui"], inplace=True)
-    df.to_csv(path + "all_articles.csv", index=False, header=True)
+    df.to_csv(path + "all_articles_diff_labels.csv", index=False, header=True)
     print("Data saved.")
 
 
