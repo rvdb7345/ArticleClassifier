@@ -86,8 +86,9 @@ def parse_document_classification(path="../../data/"):
                         "surname": author.find('ce:surname', prefix_map).text if author.find('ce:surname', prefix_map) is not None else None,
                         "given-name": author.find('ce:given-name', prefix_map).text if author.find('ce:given-name', prefix_map) is not None else None,
                         "orcid": author.attrib.get("orcid", None),
-                        "seq": author.attrib["seq"]
-
+                        "seq": author.attrib["seq"],
+                        "author-id": author.attrib.get("author-instance-id", None).split('-')[1] if author.attrib.get("author-instance-id", None) is not None else None,
+                        "instance-id": author.attrib.get("author-instance-id", None).split('-')[0] if author.attrib.get("author-instance-id", None) is not None else None,
                     }
                     for author in item.findall(".//ns0:author-group//ns0:author", prefix_map)
                 ]
