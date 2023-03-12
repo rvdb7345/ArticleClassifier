@@ -69,7 +69,7 @@ def parse_document_classification(path="../../data/"):
 
             try:
                 keywords = item.findall(".//ns0:author-keywords//ns0:author-keyword", prefix_map)
-                keywords = " ".join([k.text for k in keywords])
+                keywords = "|".join([k.text for k in keywords])
             except:
                 keywords = ""
 
