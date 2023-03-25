@@ -2,7 +2,6 @@
 
 We clean the columns such as keywords, authors, etc for easy usage later on.
 """
-import os
 import sys
 import src.general.global_variables as gv
 from src.general.utils import cc_path

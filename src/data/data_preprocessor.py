@@ -24,8 +24,8 @@ class DataPreprocessor():
         cleaned_text_col = text_col. \
             dropna(). \
             str.lower(). \
-            str.replace('[^|\w\s]', '', regex=True).\
-            str.replace(r'\r+|\n+|\t+', '', regex=True).\
+            str.replace('[^|\w\s]', '', regex=True). \
+            str.replace(r'\r+|\n+|\t+', '', regex=True). \
             str.replace(r' +', ' ', regex=True)
 
         return cleaned_text_col
@@ -44,7 +44,6 @@ class DataPreprocessor():
         cleaned_abstracts = cleaned_abstracts.apply(lambda x: remove_stopwords(x))
 
         return cleaned_abstracts
-
 
     def clean_keyword_data(self, keywords: pd.Series) -> pd.Series:
         """
