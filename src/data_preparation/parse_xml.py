@@ -217,4 +217,4 @@ def get_pui_doi_map(path="../../data/", version="A"):
 
 
 if __name__ == "__main__":
-    parse_document_classification('../data/raw/canary/original_xml_files/')
+    parse_document_classification('../../data/raw/canary/original_xml_files/')
