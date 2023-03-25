@@ -30,6 +30,7 @@ if __name__ == '__main__':
 
     # clean the keywords columns
     data_df['keywords'] = data_preprocessor.clean_keyword_data(data_df['keywords'])
+    data_df['keywords'].fillna('[]', inplace=True)
 
     # save the processed dataframe
     data_df.to_csv(cc_path('data/processed/canary/articles_cleaned.csv'))
