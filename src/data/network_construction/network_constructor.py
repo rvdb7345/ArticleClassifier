@@ -13,10 +13,10 @@ class NetworkConstructor():
     def explode_to_single_item_per_row(self, **kwargs):
         """Needs to be defined in network specific classes."""
         assert False, f'Explosion function not defined for {self.network_type}'
+        pass
 
     def generate_network(self):
         exploded_df = self.explode_to_single_item_per_row(self.data_df)
-
         grouped_df = exploded_df[['pui', self.link_variable]].groupby(self.link_variable)
         grouped_all_combinations_df = grouped_df.apply(lambda x: list(itertools.combinations(x['pui'].tolist(), 2)))
         grouped_all_combinations_not_empty_df = grouped_all_combinations_df[
@@ -25,4 +25,6 @@ class NetworkConstructor():
         all_links_df[['from', 'to']] = pd.DataFrame(all_links_df[0].tolist(), index=all_links_df.index)
         all_links_df.drop(0, inplace=True, axis=1)
         networkx_graph = nx.from_pandas_edgelist(all_links_df.iloc[:3000000], source='from', target='to')
+
+        print(all_links_df)
         return networkx_graph
