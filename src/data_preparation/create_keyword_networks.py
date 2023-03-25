@@ -6,6 +6,7 @@ from src.general.utils import cc_path
 sys.path.append(gv.PROJECT_PATH)
 from src.data.data_loader import DataLoader
 from src.data.network_construction.keyword_network_constructor import KeywordNetworkConstructor
+import pickle
 
 if __name__ == '__main__':
     loc_dict = {
@@ -16,3 +17,6 @@ if __name__ == '__main__':
 
     network_constructor = KeywordNetworkConstructor(processed_df)
     keyword_network = network_constructor.generate_network()
+
+    with open(cc_path('data/processed/canary/keyword_network.pickle'), 'wb') as file:
+        pickle.dump(keyword_network, file)
