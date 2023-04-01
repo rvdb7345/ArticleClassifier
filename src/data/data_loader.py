@@ -1,7 +1,10 @@
 import pandas as pd
+import pickle
+
 
 class DataLoader():
     """Class for loading all the necessary data."""
+
     def __init__(self, data_locs: dict):
         """Initialise the data loader with file paths."""
         self.data_locs = data_locs
@@ -43,15 +46,26 @@ class DataLoader():
         processed_csv = pd.read_csv(self.data_locs['processed_csv'])
         return processed_csv
 
-
     def load_embeddings_csv(self):
         assert 'abstract_embeddings' in self.data_locs.keys(), \
             f'Cannot load abstract_embeddings data as path is not given, only paths for {self.data_locs.keys()}'
         embeddings_csv = pd.read_csv(self.data_locs['abstract_embeddings'])
         return embeddings_csv
 
+    def load_author_network(self):
+        assert 'author_network' in self.data_locs.keys(), \
+            f'Cannot load author_network data as path is not given, only paths for {self.data_locs.keys()}'
 
+        with (open(self.data_locs['author_network'], "rb")) as file:
+            network = pickle.load(file)
 
+        return network
 
+    def load_keyword_network(self):
+        assert 'keyword_network' in self.data_locs.keys(), \
+            f'Cannot load keyword_network data as path is not given, only paths for {self.data_locs.keys()}'
 
+        with (open(self.data_locs['keyword_network'], "rb")) as file:
+            network = pickle.load(file)
 
+        return network
