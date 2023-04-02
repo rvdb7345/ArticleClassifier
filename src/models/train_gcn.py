@@ -6,6 +6,7 @@ import torch
 from torch_geometric.data import Data
 from torch_geometric.nn import GCNConv
 from torch_geometric.utils.convert import from_networkx
+from sklearn.model_selection import train_test_split
 
 import torch.nn.functional as F
 sys.path.append(
@@ -47,7 +48,7 @@ def test(model, data, optimizer, criterion):
       model.eval()
       out = model(data.x, data.edge_index)
       pred = out.argmax(dim=1)
-      test_correct = pred[data.test_mask] == data.y[data.test_mask]
+      test_correct = pred[data.test_mask] == data.y[data.test_mask].argmax(dim=1)
       test_acc = int(test_correct.sum()) / int(data.test_mask.sum())
       return test_acc
 
@@ -80,9 +81,12 @@ if __name__ == '__main__':
 
     # author_networkx = data_loader.load_author_network()
 
-    label_columns = processed_df.loc[:, ~processed_df.columns.isin(
-        ['file_name', 'title', 'keywords', 'abstract', 'abstract_2', 'authors', 'organization', 'chemicals',
-         'num_refs', 'date-delivered', 'labels_m', 'labels_a'])]
+    # label_columns = processed_df.loc[:, ~processed_df.columns.isin(
+    #     ['file_name', 'title', 'keywords', 'abstract', 'abstract_2', 'authors', 'organization', 'chemicals',
+    #      'num_refs', 'date-delivered', 'labels_m', 'labels_a'])]
+
+    label_columns = processed_df.loc[:, ['pui', 'human', 'mouse','rat']]
+
     label_columns[label_columns.columns.difference(['pui'])] = label_columns[label_columns.columns.difference(['pui'])].astype(int)
 
     features = ['file_name', 'pui', 'title', 'keywords', 'abstract', 'abstract_2', 'authors', 'organization', 'chemicals',
@@ -97,7 +101,7 @@ if __name__ == '__main__':
 
     import random
     import numpy as np
-    k = 1000
+    k =5000
 
     sampled_nodes = random.sample(author_networkx.nodes, k)
     sampled_graph = author_networkx.subgraph(sampled_nodes).copy()
@@ -112,7 +116,7 @@ if __name__ == '__main__':
     networkx.set_node_attributes(sampled_graph, dict(zip(processed_df.loc[processed_df['pui'].isin(sampled_graph.nodes),
                                                                           'pui'].astype(str).to_list(),
                                                          label_columns.loc[ label_columns['pui'].isin(sampled_graph.nodes),
-                                                                            label_columns.columns.difference(['pui'])].astype(np.uint8).to_numpy())), 'y')
+                                                                            label_columns.columns.difference(['pui'])].astype(np.float32).to_numpy())), 'y')
 
 
     # pyg_graph = from_networkx(sampled_graph)
@@ -135,21 +139,41 @@ if __name__ == '__main__':
 
     sampled_graph = networkx.relabel_nodes(sampled_graph, node_label_mapping)
 
+    train_indices, test_indices = train_test_split(range(len(x)), test_size=0.2, random_state=0)
+
+    def get_mask(index, size):
+        mask = np.repeat([False], size)
+        mask[index] = True
+        mask = torch.tensor(mask, dtype=torch.bool)
+        return mask
+
+
+    train_mask = get_mask(train_indices, len(x))
+    test_mask = get_mask(test_indices, len(x))
+
+    print(train_mask)
+
+    print(test_mask)
+
     data = Data(x=torch.from_numpy(x), edge_index=torch.from_numpy(np.array(sampled_graph.edges(data=False), dtype=np.int).T),
-                y = torch.from_numpy(y))
+                y=torch.from_numpy(y), train_mask=train_mask, test_mask=test_mask)
 
     print(data)
     out = model(data.x, data.edge_index)
     print(out)
-    visualize(out, color=data.y[:, 0])
+    visualize(out, color=data.y)
 
     optimizer = torch.optim.Adam(model.parameters(), lr=0.01, weight_decay=5e-4)
     criterion = torch.nn.CrossEntropyLoss()
 
-    for epoch in range(1, 101):
+    for epoch in range(1, 500):
         loss = train(model, data, optimizer, criterion)
         print(f'Epoch: {epoch:03d}, Loss: {loss:.4f}')
 
     model.eval()
     out = model(data.x, data.edge_index)
+
+    test_acc = test(model, data, optimizer, criterion)
+    print(f'Test Accuracy: {test_acc:.4f}')
+
     visualize(out, color=data.y)
