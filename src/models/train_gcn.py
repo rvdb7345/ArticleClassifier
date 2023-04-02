@@ -34,6 +34,22 @@ class GCN(torch.nn.Module):
         x = self.conv2(x, edge_index)
         return x
 
+def train(model, data, optimizer, criterion):
+      model.train()
+      optimizer.zero_grad()
+      out = model(data.x, data.edge_index)
+      loss = criterion(out[data.train_mask], data.y[data.train_mask])
+      loss.backward()
+      optimizer.step()
+      return loss
+
+def test(model, data, optimizer, criterion):
+      model.eval()
+      out = model(data.x, data.edge_index)
+      pred = out.argmax(dim=1)
+      test_correct = pred[data.test_mask] == data.y[data.test_mask]
+      test_acc = int(test_correct.sum()) / int(data.test_mask.sum())
+      return test_acc
 
 def visualize(h, color):
     z = TSNE(n_components=2).fit_transform(h.detach().cpu().numpy())
@@ -125,5 +141,15 @@ if __name__ == '__main__':
     print(data)
     out = model(data.x, data.edge_index)
     print(out)
-    visualize(out[:, 0], color=data.y[:, 0])
+    visualize(out, color=data.y[:, 0])
 
+    optimizer = torch.optim.Adam(model.parameters(), lr=0.01, weight_decay=5e-4)
+    criterion = torch.nn.CrossEntropyLoss()
+
+    for epoch in range(1, 101):
+        loss = train(model, data, optimizer, criterion)
+        print(f'Epoch: {epoch:03d}, Loss: {loss:.4f}')
+
+    model.eval()
+    out = model(data.x, data.edge_index)
+    visualize(out, color=data.y)
