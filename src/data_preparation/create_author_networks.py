@@ -14,6 +14,7 @@ if __name__ == '__main__':
     }
     data_loader = DataLoader(loc_dict)
     processed_df = data_loader.load_processed_csv()
+    processed_df['pui'] = processed_df['pui'].astype(str)
 
     network_constructor = AuthorNetworkConstructor(processed_df)
     author_network = network_constructor.generate_network()

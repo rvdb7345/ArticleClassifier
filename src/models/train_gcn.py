@@ -1,7 +1,12 @@
 import os
 import sys
+
+import networkx
 import torch
+from torch_geometric.data import Data
 from torch_geometric.nn import GCNConv
+from torch_geometric.utils.convert import from_networkx
+
 import torch.nn.functional as F
 sys.path.append(
   os.path.abspath(os.path.join(os.path.dirname('data_loader.py'), os.path.pardir)))
@@ -50,24 +55,75 @@ if __name__ == '__main__':
     }
     data_loader = DataLoader(loc_dict)
     processed_df = data_loader.load_processed_csv()
+    processed_df['pui'] = processed_df['pui'].astype(str)
+
     embedding_df = data_loader.load_embeddings_csv()
+    embedding_df['pui'] = embedding_df['pui'].astype(str)
+
     author_networkx = data_loader.load_author_network()
+
     # author_networkx = data_loader.load_author_network()
 
     label_columns = processed_df.loc[:, ~processed_df.columns.isin(
-        ['file_name', 'pui', 'title', 'keywords', 'abstract', 'abstract_2', 'authors', 'organization', 'chemicals',
+        ['file_name', 'title', 'keywords', 'abstract', 'abstract_2', 'authors', 'organization', 'chemicals',
          'num_refs', 'date-delivered', 'labels_m', 'labels_a'])]
-    label_columns = label_columns.astype(int)
+    label_columns[label_columns.columns.difference(['pui'])] = label_columns[label_columns.columns.difference(['pui'])].astype(int)
 
     features = ['file_name', 'pui', 'title', 'keywords', 'abstract', 'abstract_2', 'authors', 'organization', 'chemicals',
          'num_refs', 'date-delivered', 'labels_m', 'labels_a']
 
-    model = GCN(hidden_channels=16, num_features=len(features), num_labels=len(label_columns.columns))
+    model = GCN(hidden_channels=16, num_features=256, num_labels=len(label_columns.columns)-1)
     print(model)
+
+
 
     model.eval()
 
+    import random
+    import numpy as np
+    k = 1000
 
+    sampled_nodes = random.sample(author_networkx.nodes, k)
+    sampled_graph = author_networkx.subgraph(sampled_nodes).copy()
+
+    del(author_networkx)
+
+    networkx.set_node_attributes(sampled_graph,
+        dict(zip(embedding_df.loc[embedding_df['pui'].isin(sampled_graph.nodes),
+                                  'pui'].astype(str).to_list(),
+                 embedding_df.loc[embedding_df['pui'].isin(sampled_graph.nodes),
+                                  embedding_df.columns.difference(['pui'])].astype(np.float32).to_numpy())), 'x')
+    networkx.set_node_attributes(sampled_graph, dict(zip(processed_df.loc[processed_df['pui'].isin(sampled_graph.nodes),
+                                                                          'pui'].astype(str).to_list(),
+                                                         label_columns.loc[ label_columns['pui'].isin(sampled_graph.nodes),
+                                                                            label_columns.columns.difference(['pui'])].astype(np.uint8).to_numpy())), 'y')
+
+
+    # pyg_graph = from_networkx(sampled_graph)
+
+    nodes_to_remove = [node for node in list(sampled_graph.nodes) if not node in embedding_df.pui.to_list()]
+    for node in nodes_to_remove:
+        sampled_graph.remove_node(node)
+
+    node_label_mapping = dict(zip(sampled_graph.nodes, range(len(sampled_graph))))
+    #
+    #
+    # x = embedding_df.loc[
+    #         embedding_df['pui'].isin(sampled_graph.nodes), embedding_df.columns.difference(['pui'])].astype(np.float32).to_numpy()
+    # y = label_columns.loc[
+    #         label_columns['pui'].isin(sampled_graph.nodes), label_columns.columns.difference(['pui'])].astype(np.uint8).to_numpy()
+
+
+    x = np.array([emb['x'] for (u, emb) in sampled_graph.nodes(data=True)])
+    y = np.array([emb['y'] for (u, emb) in sampled_graph.nodes(data=True)])
+
+    sampled_graph = networkx.relabel_nodes(sampled_graph, node_label_mapping)
+
+    data = Data(x=torch.from_numpy(x), edge_index=torch.from_numpy(np.array(sampled_graph.edges(data=False), dtype=np.int).T),
+                y = torch.from_numpy(y))
+
+    print(data)
     out = model(data.x, data.edge_index)
-    visualize(out, color=data.y)
+    print(out)
+    visualize(out[:, 0], color=data.y[:, 0])
 
