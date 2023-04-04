@@ -148,7 +148,7 @@ def plot_metrics_during_training(train_acc_all: list, test_acc_all: list, loss_a
     ax2.plot(np.arange(1, len(train_acc_all) + 1), loss_all, label='Loss', c='green')
 
     plt.title(f'{model_name}')
-    plt.legend(loc='lower right', fontsize='x-large')
+    fig.legend(loc='lower right', fontsize='x-large')
     plt.savefig(f'{model_name}_loss.png')
     plt.show()
 
@@ -164,7 +164,8 @@ def visualize(h, color):
     plt.show()
 
 
-def get_mask(index, size):
+@typechecked
+def get_mask(index: list, size: int) -> torch.Tensor:
     """
     Get a tensor mask of the indices that service as training and test
 
@@ -296,18 +297,19 @@ if __name__ == '__main__':
     test_acc_all = []
     loss_all = []
 
+    num_epochs = 500
     plot_metric = "Macro recall"
-    for epoch in (pbar := tqdm(range(1, 500))):
+    for epoch in (pbar := tqdm(range(1, num_epochs))):
         loss = train(model, data, optimizer, criterion)
 
         train_metrics = evaluate_metrics(model, data, dataset='train')
         test_metrics = evaluate_metrics(model, data, dataset='test')
         train_acc_all.append(train_metrics[plot_metric])
         test_acc_all.append(test_metrics[plot_metric])
-        loss_all.append(loss)
+        loss_all.append(loss.item())
         pbar.set_description(f'Epoch: {epoch:03d}, Loss: {loss:.4f}')
 
-    plot_metrics_during_training(train_acc_all, test_acc_all, loss_all, model_name='GCN', plot_metric=plot_metric)
+    plot_metrics_during_training(train_acc_all, test_acc_all, loss_all, model_name='GCN', metric_name=plot_metric)
 
     # get output from trained model
     # model.eval()
