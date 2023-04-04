@@ -25,6 +25,22 @@ sys.path.append(gv.PROJECT_PATH)
 
 import matplotlib.pyplot as plt
 from sklearn.manifold import TSNE
+from torch_geometric.nn import GATConv
+
+class GAT(torch.nn.Module):
+    def __init__(self, hidden_channels, num_features, num_labels, heads):
+        super().__init__()
+        torch.manual_seed(1234567)
+        self.conv1 = GATConv(num_features, hidden_channels,heads)
+        self.conv2 = GATConv(heads*hidden_channels, num_labels, heads)
+
+    def forward(self, x, edge_index):
+        x = F.dropout(x, p=0.6, training=self.training)
+        x = self.conv1(x, edge_index)
+        x = F.elu(x)
+        x = F.dropout(x, p=0.6, training=self.training)
+        x = self.conv2(x, edge_index)
+        return torch.sigmoid(x)
 
 class GCN(torch.nn.Module):
     def __init__(self, hidden_channels, num_features, num_labels):
@@ -38,38 +54,58 @@ class GCN(torch.nn.Module):
     def forward(self, x, edge_index):
         x = self.conv1(x, edge_index)
         x = x.relu()
-        x = F.dropout(x, p=0.5, training=self.training)
-        # x = self.conv2(x, edge_index)
-        # x = x.relu()
-        # x = F.dropout(x, p=0.5, training=self.training)
-        # x = self.conv3(x, edge_index)
-        # x = x.relu()
-        # x = F.dropout(x, p=0.5, training=self.training)
+        x = F.dropout(x, p=0.2, training=self.training)
+        x = self.conv2(x, edge_index)
+        x = x.relu()
+        x = F.dropout(x, p=0.2, training=self.training)
+        x = self.conv3(x, edge_index)
+        x = x.relu()
+        x = F.dropout(x, p=0.2, training=self.training)
         x = self.convend(x, edge_index)
 
         return torch.sigmoid(x)
 
 def train(model, data, optimizer, criterion):
-      model.train()
-      optimizer.zero_grad()
-      out = model(data.x, data.edge_index)
-      loss = criterion(out[data.train_mask], data.y[data.train_mask])
-      loss.backward()
-      optimizer.step()
-      return loss
+    # model.train()
+    optimizer.zero_grad()
+    out = model(data.x, data.edge_index)
+    loss = criterion(out[data.train_mask], data.y[data.train_mask])
+    loss.backward()
+    optimizer.step()
+    return loss
 
-def test(model, data):
-      model.eval()
-      out = model(data.x, data.edge_index)
-      pred = out
+def evaluate_metrics(model, data, dataset='test'):
+    print(f'These are the score for {dataset}')
+    if dataset == 'test':
+        mask = data.test_mask
+    elif dataset == 'train':
+        mask = data.train_mask
+    else:
+        assert False, f'Dataset {dataset} not recogined. Should be "train" or "test".'
+    model.eval()
+    out = model(data.x, data.edge_index)
+    pred = out
 
-      print("The predictions: \n", pred[data.test_mask].detach().numpy())
-      print("The y: \n", data.y[data.test_mask].detach().numpy())
+    print("The predictions: \n", pred[mask].detach().numpy())
+    print("The y: \n", data.y[mask].detach().numpy())
 
-      metric_calculator = Metrics(pred[data.test_mask].detach().numpy(), data.y[data.test_mask].detach().numpy(),
-                                  threshold=0.5)
+    metric_calculator = Metrics(pred[mask].detach().numpy(), data.y[mask].detach().numpy(),
+                              threshold=0.5)
+    metrics = metric_calculator.retrieve_all_metrics()
 
-      print(metric_calculator.retrieve_all_metrics())
+    return metrics
+
+def plot_metrics_during_training(train_acc_all, test_acc_all, model_name):
+    plt.figure(figsize=(12, 8))
+    plt.plot(np.arange(1, len(train_acc_all) + 1), train_acc_all, label='train accuracy', c='blue')
+    plt.plot(np.arange(1, len(test_acc_all) + 1), test_acc_all, label='Testing accuracy', c='red')
+    plt.xlabel('Epochs')
+    plt.ylabel('Accurarcy')
+    plt.title(f'{model_name}')
+    plt.legend(loc='lower right', fontsize='x-large')
+    plt.savefig('gat_loss.png')
+    plt.show()
+
 
 def visualize(h, color):
     z = TSNE(n_components=2).fit_transform(h.detach().cpu().numpy())
@@ -102,6 +138,10 @@ if __name__ == '__main__':
 
     embedding_df = data_loader.load_embeddings_csv()
     embedding_df['pui'] = embedding_df['pui'].astype(str)
+    embedding_df[embedding_df.columns.difference(['pui'])] = \
+        (embedding_df[embedding_df.columns.difference(['pui'])] -
+         embedding_df[embedding_df.columns.difference(['pui'])].mean()) / \
+        embedding_df[embedding_df.columns.difference(['pui'])].std()
 
     author_networkx = data_loader.load_author_network()
 
@@ -111,17 +151,20 @@ if __name__ == '__main__':
     #     ['file_name', 'title', 'keywords', 'abstract', 'abstract_2', 'authors', 'organization', 'chemicals',
     #      'num_refs', 'date-delivered', 'labels_m', 'labels_a'])]
 
-    label_columns = processed_df.loc[:, ['pui', 'human', 'mouse', 'rat']]
+    label_columns = processed_df.loc[:, ['pui', 'human', 'mouse', 'rat', 'nonhuman',
+                                         'controlled study', 'animal experiment']]
     label_columns[label_columns.columns.difference(['pui'])] = label_columns[label_columns.columns.difference(['pui'])].astype(int)
     features = ['file_name', 'pui', 'title', 'keywords', 'abstract', 'abstract_2', 'authors', 'organization', 'chemicals',
          'num_refs', 'date-delivered', 'labels_m', 'labels_a']
 
     # initiate the model
-    model = GCN(hidden_channels=16, num_features=256, num_labels=len(label_columns.columns)-1)
+    model = GCN(hidden_channels=128, num_features=256, num_labels=len(label_columns.columns)-1)
+    # model = GAT(hidden_channels=8, num_features=256, num_labels=len(label_columns.columns)-1, heads=8)
+
     model.eval()
 
     # subsample the graph for less computational load
-    k = 5000
+    k = 10000
     sampled_nodes = random.sample(author_networkx.nodes, k)
     sampled_graph = author_networkx.subgraph(sampled_nodes).copy()
     del(author_networkx)
@@ -168,31 +211,43 @@ if __name__ == '__main__':
 
     # create the torch data object for further training
     data = Data(x=torch.from_numpy(x),
-                edge_index=torch.from_numpy(np.array(sampled_graph.edges(data=False), dtype=np.int).T),
+                edge_index=torch.from_numpy(np.array(sampled_graph.edges(data=False), dtype=np.int32).T),
                 y=torch.from_numpy(y),
                 train_mask=train_mask,
                 test_mask=test_mask)
 
+    # print(data.edge_index.detach().numpy().shape)
+    # assert False
     # get the output of an untrained model
     out = model(data.x, data.edge_index)
     print('The predictions of the test set before training: ', out[data.test_mask].detach().numpy())
     # visualize(out, color=data.y.argmax(dim=1))
 
     # set training parameters
-    optimizer = torch.optim.Adam(model.parameters(), lr=0.01, weight_decay=5e-4)
+    optimizer = torch.optim.NAdam(model.parameters(), lr=0.005, weight_decay=5e-4)
     criterion = torch.nn.BCELoss()
 
     # train model
-    for epoch in range(1, 100):
+    train_acc_all = []
+    test_acc_all = []
+    for epoch in range(1, 200):
         loss = train(model, data, optimizer, criterion)
         print(f'Epoch: {epoch:03d}, Loss: {loss:.4f}')
+
+        train_metrics = evaluate_metrics(model, data, dataset='train')
+        test_metrics = evaluate_metrics(model, data, dataset='test')
+        train_acc_all.append(train_metrics["Macro recall"])
+        test_acc_all.append(test_metrics["Macro recall"])
+
+    plot_metrics_during_training(train_acc_all, test_acc_all, model_name='GCN')
 
     # get output from trained model
     # model.eval()
     # out = model(data.x, data.edge_index)
 
     # get the test accuracy
-    test_acc = test(model, data)
+    evaluate_metrics(model, data, dataset='train')
+    evaluate_metrics(model, data, dataset='test')
     # print(f'Test Accuracy: {test_acc:.4f}')
 
     # visualize(out, color=data.y.argmax(dim=1))

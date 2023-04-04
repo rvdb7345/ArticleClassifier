@@ -17,7 +17,9 @@ class Metrics():
         """
         lab_df = pd.DataFrame(labels)
         # pred_df = pd.DataFrame(preds).round(0).astype(int)
-        pred_df = pd.DataFrame(preds).applymap(lambda x: self.set_threshold(x, threshold))
+        pred_df = pd.DataFrame(preds)
+        pred_df[pred_df >= threshold] = 1
+        pred_df[pred_df < threshold] = 0
 
         self.lab_df = lab_df
         self.pred_df = pred_df
@@ -27,6 +29,8 @@ class Metrics():
         self.fp = (pred_df - lab_df).eq(1).sum()
         self.fn = (pred_df - lab_df).eq(-1).sum()
         self.tn = (pred_df + lab_df).eq(0).sum()
+
+        print('this are the indv metrics', self.tp, self.fp, self.fn, self.tn)
 
     def get_classWeight(self):
         """Compute the class weight over all samples
