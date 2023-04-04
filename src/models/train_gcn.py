@@ -4,6 +4,7 @@ import os
 import sys
 import random
 import numpy as np
+from typeguard import typechecked
 
 import networkx
 import torch
@@ -13,8 +14,10 @@ from torch_geometric.utils.convert import from_networkx
 from sklearn.model_selection import train_test_split
 
 import torch.nn.functional as F
+from tqdm import tqdm
+
 sys.path.append(
-  os.path.abspath(os.path.join(os.path.dirname('data_loader.py'), os.path.pardir)))
+    os.path.abspath(os.path.join(os.path.dirname('data_loader.py'), os.path.pardir)))
 from src.data.data_loader import DataLoader
 
 import src.general.global_variables as gv
@@ -27,12 +30,13 @@ import matplotlib.pyplot as plt
 from sklearn.manifold import TSNE
 from torch_geometric.nn import GATConv
 
+
 class GAT(torch.nn.Module):
     def __init__(self, hidden_channels, num_features, num_labels, heads):
         super().__init__()
         torch.manual_seed(1234567)
-        self.conv1 = GATConv(num_features, hidden_channels,heads)
-        self.conv2 = GATConv(heads*hidden_channels, num_labels, heads)
+        self.conv1 = GATConv(num_features, hidden_channels, heads)
+        self.conv2 = GATConv(heads * hidden_channels, num_labels, heads)
 
     def forward(self, x, edge_index):
         x = F.dropout(x, p=0.6, training=self.training)
@@ -41,6 +45,7 @@ class GAT(torch.nn.Module):
         x = F.dropout(x, p=0.6, training=self.training)
         x = self.conv2(x, edge_index)
         return torch.sigmoid(x)
+
 
 class GCN(torch.nn.Module):
     def __init__(self, hidden_channels, num_features, num_labels):
@@ -54,19 +59,33 @@ class GCN(torch.nn.Module):
     def forward(self, x, edge_index):
         x = self.conv1(x, edge_index)
         x = x.relu()
-        x = F.dropout(x, p=0.2, training=self.training)
+        x = F.dropout(x, p=0.1, training=self.training)
         x = self.conv2(x, edge_index)
         x = x.relu()
-        x = F.dropout(x, p=0.2, training=self.training)
+        x = F.dropout(x, p=0.1, training=self.training)
         x = self.conv3(x, edge_index)
         x = x.relu()
-        x = F.dropout(x, p=0.2, training=self.training)
+        x = F.dropout(x, p=0.1, training=self.training)
         x = self.convend(x, edge_index)
 
         return torch.sigmoid(x)
 
-def train(model, data, optimizer, criterion):
-    # model.train()
+
+@typechecked
+def train(model: torch.nn.Module, data: Data, optimizer, criterion):
+    """
+    Perform one training iteration of the model.
+
+    Args:
+        model ():
+        data ():
+        optimizer ():
+        criterion ():
+
+    Returns:
+
+    """
+    model.train()
     optimizer.zero_grad()
     out = model(data.x, data.edge_index)
     loss = criterion(out[data.train_mask], data.y[data.train_mask])
@@ -74,8 +93,20 @@ def train(model, data, optimizer, criterion):
     optimizer.step()
     return loss
 
-def evaluate_metrics(model, data, dataset='test'):
-    print(f'These are the score for {dataset}')
+
+@typechecked
+def evaluate_metrics(model: torch.nn.Module, data: Data, dataset: str = 'test') -> dict:
+    """
+    Calculate the different metrics for the specified dataset.
+
+    Args:
+        model (torch.nn.Module): The initiated model
+        data (Data): The Torch dataset
+        dataset (str): The dataset to specify the metrics for
+
+    Returns:
+        Dictionary with the metrics
+    """
     if dataset == 'test':
         mask = data.test_mask
     elif dataset == 'train':
@@ -86,42 +117,70 @@ def evaluate_metrics(model, data, dataset='test'):
     out = model(data.x, data.edge_index)
     pred = out
 
-    print("The predictions: \n", pred[mask].detach().numpy())
-    print("The y: \n", data.y[mask].detach().numpy())
-
     metric_calculator = Metrics(pred[mask].detach().numpy(), data.y[mask].detach().numpy(),
-                              threshold=0.5)
+                                threshold=0.5)
     metrics = metric_calculator.retrieve_all_metrics()
 
     return metrics
 
-def plot_metrics_during_training(train_acc_all, test_acc_all, model_name):
-    plt.figure(figsize=(12, 8))
-    plt.plot(np.arange(1, len(train_acc_all) + 1), train_acc_all, label='train accuracy', c='blue')
-    plt.plot(np.arange(1, len(test_acc_all) + 1), test_acc_all, label='Testing accuracy', c='red')
-    plt.xlabel('Epochs')
-    plt.ylabel('Accurarcy')
+
+@typechecked
+def plot_metrics_during_training(train_acc_all: list, test_acc_all: list, loss_all: list, model_name: str, metric_name: str):
+    """
+    Plot the evolution of metrics during training
+
+    Args:
+        train_acc_all (): the train score over epochs
+        test_acc_all (): the test score over epochs
+        model_name (): the name of the model
+
+    Returns:
+        None
+    """
+    fig, ax1 = plt.subplots()
+    ax1.plot(np.arange(1, len(train_acc_all) + 1), train_acc_all, label='Train accuracy', c='blue')
+    ax1.plot(np.arange(1, len(test_acc_all) + 1), test_acc_all, label='Testing accuracy', c='red')
+    ax1.set_xlabel('Epochs')
+    ax1.set_ylabel(metric_name)
+
+    ax2 = ax1.twinx()
+    ax2.set_ylabel('Loss')
+    ax2.plot(np.arange(1, len(train_acc_all) + 1), loss_all, label='Loss', c='green')
+
     plt.title(f'{model_name}')
     plt.legend(loc='lower right', fontsize='x-large')
-    plt.savefig('gat_loss.png')
+    plt.savefig(f'{model_name}_loss.png')
     plt.show()
 
 
 def visualize(h, color):
     z = TSNE(n_components=2).fit_transform(h.detach().cpu().numpy())
 
-    plt.figure(figsize=(10,10))
+    plt.figure(figsize=(10, 10))
     plt.xticks([])
     plt.yticks([])
 
     plt.scatter(z[:, 0], z[:, 1], s=70, c=color, cmap="Set2")
     plt.show()
 
+
 def get_mask(index, size):
+    """
+    Get a tensor mask of the indices that service as training and test
+
+    Args:
+        index ():
+        size ():
+
+    Returns:
+
+    """
+
     mask = np.repeat([False], size)
     mask[index] = True
     mask = torch.tensor(mask, dtype=torch.bool)
     return mask
+
 
 if __name__ == '__main__':
 
@@ -153,32 +212,37 @@ if __name__ == '__main__':
 
     label_columns = processed_df.loc[:, ['pui', 'human', 'mouse', 'rat', 'nonhuman',
                                          'controlled study', 'animal experiment']]
-    label_columns[label_columns.columns.difference(['pui'])] = label_columns[label_columns.columns.difference(['pui'])].astype(int)
-    features = ['file_name', 'pui', 'title', 'keywords', 'abstract', 'abstract_2', 'authors', 'organization', 'chemicals',
-         'num_refs', 'date-delivered', 'labels_m', 'labels_a']
+    label_columns[label_columns.columns.difference(['pui'])] = label_columns[
+        label_columns.columns.difference(['pui'])].astype(int)
+    features = ['file_name', 'pui', 'title', 'keywords', 'abstract', 'abstract_2', 'authors', 'organization',
+                'chemicals',
+                'num_refs', 'date-delivered', 'labels_m', 'labels_a']
 
     # initiate the model
-    model = GCN(hidden_channels=128, num_features=256, num_labels=len(label_columns.columns)-1)
+    model = GCN(hidden_channels=16, num_features=256, num_labels=len(label_columns.columns) - 1)
     # model = GAT(hidden_channels=8, num_features=256, num_labels=len(label_columns.columns)-1, heads=8)
 
     model.eval()
 
     # subsample the graph for less computational load
-    k = 10000
+    k = 1000
     sampled_nodes = random.sample(author_networkx.nodes, k)
     sampled_graph = author_networkx.subgraph(sampled_nodes).copy()
-    del(author_networkx)
+    del author_networkx
 
     # set the node attributes (abstracts and labels) in the networkx graph for consistent processing later on
     networkx.set_node_attributes(sampled_graph,
-        dict(zip(embedding_df.loc[embedding_df['pui'].isin(sampled_graph.nodes),
-                                  'pui'].astype(str).to_list(),
-                 embedding_df.loc[embedding_df['pui'].isin(sampled_graph.nodes),
-                                  embedding_df.columns.difference(['pui'])].astype(np.float32).to_numpy())), 'x')
-    networkx.set_node_attributes(sampled_graph, dict(zip(processed_df.loc[processed_df['pui'].isin(sampled_graph.nodes),
-                                                                          'pui'].astype(str).to_list(),
-                                                         label_columns.loc[ label_columns['pui'].isin(sampled_graph.nodes),
-                                                                            label_columns.columns.difference(['pui'])].astype(np.float32).to_numpy())), 'y')
+                                 dict(zip(embedding_df.loc[embedding_df['pui'].isin(sampled_graph.nodes),
+                                                           'pui'].astype(str).to_list(),
+                                          embedding_df.loc[embedding_df['pui'].isin(sampled_graph.nodes),
+                                                           embedding_df.columns.difference(['pui'])].astype(
+                                              np.float32).to_numpy())), 'x')
+    networkx.set_node_attributes(sampled_graph,
+                                 dict(zip(processed_df.loc[processed_df['pui'].isin(sampled_graph.nodes),
+                                                           'pui'].astype(str).to_list(),
+                                          label_columns.loc[label_columns['pui'].isin(sampled_graph.nodes),
+                                                            label_columns.columns.difference(['pui'])].astype(
+                                              np.float32).to_numpy())), 'y')
 
     # would be nice if this one works, but it sadly doesn't
     # pyg_graph = from_networkx(sampled_graph)
@@ -224,22 +288,26 @@ if __name__ == '__main__':
     # visualize(out, color=data.y.argmax(dim=1))
 
     # set training parameters
-    optimizer = torch.optim.NAdam(model.parameters(), lr=0.005, weight_decay=5e-4)
+    optimizer = torch.optim.Adam(model.parameters(), lr=0.005, weight_decay=5e-4)
     criterion = torch.nn.BCELoss()
 
     # train model
     train_acc_all = []
     test_acc_all = []
-    for epoch in range(1, 200):
+    loss_all = []
+
+    plot_metric = "Macro recall"
+    for epoch in (pbar := tqdm(range(1, 500))):
         loss = train(model, data, optimizer, criterion)
-        print(f'Epoch: {epoch:03d}, Loss: {loss:.4f}')
 
         train_metrics = evaluate_metrics(model, data, dataset='train')
         test_metrics = evaluate_metrics(model, data, dataset='test')
-        train_acc_all.append(train_metrics["Macro recall"])
-        test_acc_all.append(test_metrics["Macro recall"])
+        train_acc_all.append(train_metrics[plot_metric])
+        test_acc_all.append(test_metrics[plot_metric])
+        loss_all.append(loss)
+        pbar.set_description(f'Epoch: {epoch:03d}, Loss: {loss:.4f}')
 
-    plot_metrics_during_training(train_acc_all, test_acc_all, model_name='GCN')
+    plot_metrics_during_training(train_acc_all, test_acc_all, loss_all, model_name='GCN', plot_metric=plot_metric)
 
     # get output from trained model
     # model.eval()

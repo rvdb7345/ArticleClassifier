@@ -30,8 +30,6 @@ class Metrics():
         self.fn = (pred_df - lab_df).eq(-1).sum()
         self.tn = (pred_df + lab_df).eq(0).sum()
 
-        print('this are the indv metrics', self.tp, self.fp, self.fn, self.tn)
-
     def get_classWeight(self):
         """Compute the class weight over all samples
 
