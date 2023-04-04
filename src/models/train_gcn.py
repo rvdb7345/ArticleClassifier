@@ -39,14 +39,15 @@ class GCN(torch.nn.Module):
         x = self.conv1(x, edge_index)
         x = x.relu()
         x = F.dropout(x, p=0.5, training=self.training)
-        x = self.conv2(x, edge_index)
-        x = x.relu()
-        x = F.dropout(x, p=0.5, training=self.training)
-        x = self.conv3(x, edge_index)
-        x = x.relu()
-        x = F.dropout(x, p=0.5, training=self.training)
+        # x = self.conv2(x, edge_index)
+        # x = x.relu()
+        # x = F.dropout(x, p=0.5, training=self.training)
+        # x = self.conv3(x, edge_index)
+        # x = x.relu()
+        # x = F.dropout(x, p=0.5, training=self.training)
         x = self.convend(x, edge_index)
-        return x
+
+        return torch.sigmoid(x)
 
 def train(model, data, optimizer, criterion):
       model.train()
@@ -60,10 +61,15 @@ def train(model, data, optimizer, criterion):
 def test(model, data):
       model.eval()
       out = model(data.x, data.edge_index)
-      pred = out.argmax(dim=1)
-      test_correct = pred[data.test_mask] == data.y[data.test_mask].argmax(dim=1)
-      test_acc = int(test_correct.sum()) / int(data.test_mask.sum())
-      return test_acc
+      pred = out
+
+      print("The predictions: \n", pred[data.test_mask].detach().numpy())
+      print("The y: \n", data.y[data.test_mask].detach().numpy())
+
+      metric_calculator = Metrics(pred[data.test_mask].detach().numpy(), data.y[data.test_mask].detach().numpy(),
+                                  threshold=0.5)
+
+      print(metric_calculator.retrieve_all_metrics())
 
 def visualize(h, color):
     z = TSNE(n_components=2).fit_transform(h.detach().cpu().numpy())
@@ -151,7 +157,7 @@ if __name__ == '__main__':
     sampled_graph = networkx.relabel_nodes(sampled_graph, node_label_mapping)
 
     # get the x and the y from the networkx graph
-    # TODO: check whether this is actually an ordered iteration. Does .nodes iterate according to the idx order
+    # TODO: enforce order of list for piece of mind
     x = np.array([emb['x'] for (u, emb) in sampled_graph.nodes(data=True)])
     y = np.array([emb['y'] for (u, emb) in sampled_graph.nodes(data=True)])
 
@@ -169,23 +175,24 @@ if __name__ == '__main__':
 
     # get the output of an untrained model
     out = model(data.x, data.edge_index)
+    print('The predictions of the test set before training: ', out[data.test_mask].detach().numpy())
     # visualize(out, color=data.y.argmax(dim=1))
 
     # set training parameters
     optimizer = torch.optim.Adam(model.parameters(), lr=0.01, weight_decay=5e-4)
-    criterion = torch.nn.BCEWithLogitsLoss()
+    criterion = torch.nn.BCELoss()
 
     # train model
-    for epoch in range(1, 500):
+    for epoch in range(1, 100):
         loss = train(model, data, optimizer, criterion)
         print(f'Epoch: {epoch:03d}, Loss: {loss:.4f}')
 
     # get output from trained model
-    model.eval()
-    out = model(data.x, data.edge_index)
+    # model.eval()
+    # out = model(data.x, data.edge_index)
 
     # get the test accuracy
     test_acc = test(model, data)
-    print(f'Test Accuracy: {test_acc:.4f}')
+    # print(f'Test Accuracy: {test_acc:.4f}')
 
     # visualize(out, color=data.y.argmax(dim=1))

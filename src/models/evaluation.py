@@ -36,7 +36,7 @@ class Metrics():
         """
         return self.lab_df.sum() / sum(self.lab_df.sum())
 
-    def set_threshold(x, thr):
+    def set_threshold(self, x, thr):
         return 1 if x > thr else 0
 
     def get_precision(self, i):
@@ -94,7 +94,7 @@ class Metrics():
 
         return 2 * prec * rec / (prec + rec) if tp > 0 else 0.0
 
-    def get_macroAvg(metric):
+    def get_macroAvg(self, metric):
         """Compute the macro average of a given metric (average over classes)
 
         Args:
@@ -106,7 +106,7 @@ class Metrics():
         macro_avg = sum(metric) / len(metric)
         return macro_avg
 
-    def retrieve_allMetrics(self):
+    def retrieve_all_metrics(self):
         """Retrieve all metrics
             - Metrics per class
             - Macro average over classes
