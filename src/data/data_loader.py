@@ -1,3 +1,5 @@
+import ast
+
 import pandas as pd
 import pickle
 
@@ -44,6 +46,7 @@ class DataLoader():
         assert 'processed_csv' in self.data_locs.keys(), \
             f'Cannot load processed_csv data as path is not given, only paths for {self.data_locs.keys()}'
         processed_csv = pd.read_csv(self.data_locs['processed_csv'])
+        processed_csv['labels_m'] = processed_csv['labels_m'].str.split(',')
         return processed_csv
 
     def load_embeddings_csv(self):
