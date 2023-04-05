@@ -4,6 +4,7 @@ import os
 import sys
 import random
 import numpy as np
+import datetime
 from typeguard import typechecked
 
 import networkx
@@ -36,14 +37,23 @@ class GAT(torch.nn.Module):
         super().__init__()
         torch.manual_seed(1234567)
         self.conv1 = GATConv(num_features, hidden_channels, heads)
-        self.conv2 = GATConv(heads * hidden_channels, num_labels, heads)
+        self.conv2 = GATConv(heads * hidden_channels, hidden_channels, heads)
+        self.conv3 = GATConv(heads * hidden_channels, hidden_channels, heads)
+        self.convend = GATConv(heads * hidden_channels, num_labels, 1)
 
     def forward(self, x, edge_index):
-        x = F.dropout(x, p=0.6, training=self.training)
+        x = F.dropout(x, p=0.2, training=self.training)
         x = self.conv1(x, edge_index)
         x = F.elu(x)
-        x = F.dropout(x, p=0.6, training=self.training)
+        x = F.dropout(x, p=0.2, training=self.training)
         x = self.conv2(x, edge_index)
+        x = F.elu(x)
+        x = F.dropout(x, p=0.2, training=self.training)
+        x = self.conv3(x, edge_index)
+        x = F.elu(x)
+        x = F.dropout(x, p=0.2, training=self.training)
+        x = self.convend(x, edge_index)
+
         return torch.sigmoid(x)
 
 
@@ -137,6 +147,10 @@ def plot_metrics_during_training(train_acc_all: list, test_acc_all: list, loss_a
     Returns:
         None
     """
+    today = datetime.date.today()
+    now = datetime.datetime.now()
+    time = now.strftime("%H-%M-%S")
+
     fig, ax1 = plt.subplots()
     ax1.plot(np.arange(1, len(train_acc_all) + 1), train_acc_all, label='Train accuracy', c='blue')
     ax1.plot(np.arange(1, len(test_acc_all) + 1), test_acc_all, label='Testing accuracy', c='red')
@@ -149,7 +163,12 @@ def plot_metrics_during_training(train_acc_all: list, test_acc_all: list, loss_a
 
     plt.title(f'{model_name}')
     fig.legend(loc='lower right', fontsize='x-large')
-    plt.savefig(f'{model_name}_loss.png')
+
+    image_path = cc_path(f'reports/figures/classification_results/{today}/')
+    if not os.path.exists(image_path):
+        os.mkdir(image_path)
+    os.mkdir(image_path + f'{time}/')
+    plt.savefig(cc_path(f'reports/figures/classification_results/{today}/{time}/{model_name}_{metric_name}.png'))
     plt.show()
 
 
@@ -184,11 +203,12 @@ def get_mask(index: list, size: int) -> torch.Tensor:
 
 
 if __name__ == '__main__':
+    gnn_type = 'GAT'
 
     # load all the data
     loc_dict = {
         'processed_csv': cc_path('data/processed/canary/articles_cleaned.csv'),
-        'abstract_embeddings': cc_path('data/processed/canary/embeddings.csv'),
+        'abstract_embeddings': cc_path('data/processed/canary/embeddings_fasttext.csv'),
         'keyword_network': cc_path('data/processed/canary/keyword_network.pickle'),
         'author_network': cc_path('data/processed/canary/author_network.pickle')
     }
@@ -207,12 +227,12 @@ if __name__ == '__main__':
 
     # process the labels we want to select now
 
-    # label_columns = processed_df.loc[:, ~processed_df.columns.isin(
-    #     ['file_name', 'title', 'keywords', 'abstract', 'abstract_2', 'authors', 'organization', 'chemicals',
-    #      'num_refs', 'date-delivered', 'labels_m', 'labels_a'])]
+    label_columns = processed_df.loc[:, ~processed_df.columns.isin(
+        ['file_name', 'title', 'keywords', 'abstract', 'abstract_2', 'authors', 'organization', 'chemicals',
+         'num_refs', 'date-delivered', 'labels_m', 'labels_a'])]
 
-    label_columns = processed_df.loc[:, ['pui', 'human', 'mouse', 'rat', 'nonhuman',
-                                         'controlled study', 'animal experiment']]
+    # label_columns = processed_df.loc[:, ['pui', 'human', 'mouse', 'rat', 'nonhuman',
+    #                                      'controlled study', 'animal experiment']]
     label_columns[label_columns.columns.difference(['pui'])] = label_columns[
         label_columns.columns.difference(['pui'])].astype(int)
     features = ['file_name', 'pui', 'title', 'keywords', 'abstract', 'abstract_2', 'authors', 'organization',
@@ -220,13 +240,18 @@ if __name__ == '__main__':
                 'num_refs', 'date-delivered', 'labels_m', 'labels_a']
 
     # initiate the model
-    model = GCN(hidden_channels=16, num_features=256, num_labels=len(label_columns.columns) - 1)
-    # model = GAT(hidden_channels=8, num_features=256, num_labels=len(label_columns.columns)-1, heads=8)
+    if gnn_type == 'GCN':
+        model = GCN(hidden_channels=16, num_features=embedding_df.shape[1]-1, num_labels=len(label_columns.columns) - 1)
+    elif gnn_type == 'GAT':
+        model = GAT(hidden_channels=16, num_features=embedding_df.shape[1]-1, num_labels=len(label_columns.columns)-1,
+                    heads=8)
+    else:
+        assert False, f'Model type: {gnn_type} not recognised, must be in: ["GCN", "GAT"]'
 
     model.eval()
 
     # subsample the graph for less computational load
-    k = 1000
+    k = 10000
     sampled_nodes = random.sample(author_networkx.nodes, k)
     sampled_graph = author_networkx.subgraph(sampled_nodes).copy()
     del author_networkx
@@ -289,7 +314,7 @@ if __name__ == '__main__':
     # visualize(out, color=data.y.argmax(dim=1))
 
     # set training parameters
-    optimizer = torch.optim.Adam(model.parameters(), lr=0.005, weight_decay=5e-4)
+    optimizer = torch.optim.Adam(model.parameters(), lr=0.01, weight_decay=5e-3)
     criterion = torch.nn.BCELoss()
 
     # train model
@@ -297,8 +322,8 @@ if __name__ == '__main__':
     test_acc_all = []
     loss_all = []
 
-    num_epochs = 500
-    plot_metric = "Macro recall"
+    num_epochs = 100
+    plot_metric = "Macro F1 score"
     for epoch in (pbar := tqdm(range(1, num_epochs))):
         loss = train(model, data, optimizer, criterion)
 
@@ -309,7 +334,7 @@ if __name__ == '__main__':
         loss_all.append(loss.item())
         pbar.set_description(f'Epoch: {epoch:03d}, Loss: {loss:.4f}')
 
-    plot_metrics_during_training(train_acc_all, test_acc_all, loss_all, model_name='GCN', metric_name=plot_metric)
+    plot_metrics_during_training(train_acc_all, test_acc_all, loss_all, model_name=gnn_type, metric_name=plot_metric)
 
     # get output from trained model
     # model.eval()
