@@ -45,7 +45,7 @@ class DataLoader():
     def load_processed_csv(self):
         assert 'processed_csv' in self.data_locs.keys(), \
             f'Cannot load processed_csv data as path is not given, only paths for {self.data_locs.keys()}'
-        processed_csv = pd.read_csv(self.data_locs['processed_csv'])
+        processed_csv = pd.read_csv(self.data_locs['processed_csv'], index_col=0)
         processed_csv['labels_m'] = processed_csv['labels_m'].str.split(',')
         return processed_csv
 
