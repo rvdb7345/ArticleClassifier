@@ -47,12 +47,16 @@ class DataLoader():
             f'Cannot load processed_csv data as path is not given, only paths for {self.data_locs.keys()}'
         processed_csv = pd.read_csv(self.data_locs['processed_csv'], index_col=0)
         processed_csv['labels_m'] = processed_csv['labels_m'].str.split(',')
+        processed_csv['pui'] = processed_csv['pui'].astype(str)
+
         return processed_csv
 
     def load_embeddings_csv(self):
         assert 'abstract_embeddings' in self.data_locs.keys(), \
             f'Cannot load abstract_embeddings data as path is not given, only paths for {self.data_locs.keys()}'
         embeddings_csv = pd.read_csv(self.data_locs['abstract_embeddings'])
+        embeddings_csv['pui'] = embeddings_csv['pui'].astype(str)
+
         return embeddings_csv
 
     def load_author_network(self):
