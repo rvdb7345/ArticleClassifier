@@ -4,6 +4,7 @@ import os
 import sys
 import random
 import numpy as np
+import pandas as pd
 import datetime
 from typeguard import typechecked
 
@@ -202,6 +203,21 @@ def make_torch_network(sampled_graph, embedding_df, processed_df, train_mask, te
     return data
 
 
+def standardise_embeddings(df: pd.DataFrame) -> pd.DataFrame:
+    """
+    Standardise the abstract embeddings.
+    Args:
+        df (pd.DataFrame): dataframe with the embeddings
+
+    Returns:
+        standardised embeddings
+    """
+    df[df.columns.difference(['pui'])] = \
+        (df[df.columns.difference(['pui'])] -
+         df[df.columns.difference(['pui'])].mean()) / \
+        df[df.columns.difference(['pui'])].std()
+    return df
+
 
 if __name__ == '__main__':
     gnn_type = 'dualGAT'
@@ -215,17 +231,12 @@ if __name__ == '__main__':
     }
     data_loader = DataLoader(loc_dict)
     processed_df = data_loader.load_processed_csv()
-    processed_df['pui'] = processed_df['pui'].astype(str)
-
     embedding_df = data_loader.load_embeddings_csv()
-    embedding_df['pui'] = embedding_df['pui'].astype(str)
-    embedding_df[embedding_df.columns.difference(['pui'])] = \
-        (embedding_df[embedding_df.columns.difference(['pui'])] -
-         embedding_df[embedding_df.columns.difference(['pui'])].mean()) / \
-        embedding_df[embedding_df.columns.difference(['pui'])].std()
-
     author_networkx = data_loader.load_author_network()
     keyword_network = data_loader.load_keyword_network()
+
+    embedding_df = standardise_embeddings(embedding_df)
+
 
     # process the labels we want to select now
 
@@ -303,7 +314,7 @@ if __name__ == '__main__':
     test_acc_all = []
     loss_all = []
 
-    num_epochs = 20
+    num_epochs = 100
     plot_metric = "Macro F1 score"
     data = [author_data, keyword_data]
     for epoch in (pbar := tqdm(range(1, num_epochs))):
