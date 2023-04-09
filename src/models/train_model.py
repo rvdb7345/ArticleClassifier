@@ -261,9 +261,12 @@ def initiate_model(gnn_type, model_parameters, num_features, num_labels):
 
 if __name__ == '__main__':
     # current models to choose from: ["GCN", "GAT", "dualGCN", "dualGAT"]
+    # current embedding_types to choose from: ["general", "label_specific"]
+
     gnn_type = 'dualGAT'
     subsample_size = 10000
     data_type_to_use = ['keyword', 'author']
+    embedding_type = 'label_specific'
 
     all_model_parameters = {
         "GAT": {
@@ -287,21 +290,28 @@ if __name__ == '__main__':
         'processed_csv': cc_path('data/processed/canary/articles_cleaned.csv'),
         'abstract_embeddings': cc_path('data/processed/canary/embeddings_fasttext.csv'),
         'keyword_network': cc_path('data/processed/canary/keyword_network.pickle'),
+        'xml_embeddings': cc_path('data/processed/canary/embeddings_xml.csv'),
         'author_network': cc_path('data/processed/canary/author_network.pickle')
     }
     data_loader = DataLoader(loc_dict)
     processed_df = data_loader.load_processed_csv()
-    embedding_df = data_loader.load_embeddings_csv()
     author_networkx = data_loader.load_author_network()
     keyword_network = data_loader.load_keyword_network()
+
     all_data = {
         'author': author_networkx,
         'keyword': keyword_network
     }
 
     # process all data
+    if embedding_type == 'general':
+        embedding_df = data_loader.load_embeddings_csv()
+    elif embedding_type == 'label_specific':
+        embedding_df = data_loader.xml_embeddings()
+
     embedding_df = standardise_embeddings(embedding_df)
 
+    
     # process the labels we want to select now
 
     # label_columns = processed_df.loc[:, ~processed_df.columns.isin(
