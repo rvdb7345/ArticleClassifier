@@ -1,7 +1,9 @@
 import ast
 
+import numpy as np
 import pandas as pd
 import pickle
+
 
 
 class DataLoader():
@@ -76,3 +78,12 @@ class DataLoader():
             network = pickle.load(file)
 
         return network
+
+    def load_xml_embeddings(self):
+        assert 'xml_embeddings' in self.data_locs.keys(), \
+            f'Cannot load xml_embeddings data as path is not given, only paths for {self.data_locs.keys()}'
+
+        xml_embeddings_csv = pd.read_feather(self.data_locs['xml_embeddings'])
+        xml_embeddings_csv['pui'] = xml_embeddings_csv['pui'].astype(str)
+        
+        return xml_embeddings_csv
