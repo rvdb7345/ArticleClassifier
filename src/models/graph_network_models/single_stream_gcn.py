@@ -12,10 +12,17 @@ class GCN(torch.nn.Module):
         self.conv1 = GCNConv(num_features, hidden_channels)
         self.conv2 = GCNConv(hidden_channels, hidden_channels)
         self.conv3 = GCNConv(hidden_channels, hidden_channels)
-        self.convend = GCNConv(hidden_channels, num_labels)
+        self.convend = GCNConv(hidden_channels, num_labels)        
+        # self.convend = GCNConv(hidden_channels, hidden_channels)
+
+        # self.class_1 = torch.nn.Linear(hidden_channels, hidden_channels * 2)
+        # self.class_2 = torch.nn.Linear(hidden_channels * 2, hidden_channels * 2)
+        # self.linear_final = torch.nn.Linear(hidden_channels * 2, num_labels)
+
+
 
     def forward(self, x, edge_index):
-        x = self.conv1(x, edge_index)
+        x = self.conv1(x.float(), edge_index)
         x = x.relu()
         x = F.dropout(x, p=0.1, training=self.training)
         x = self.conv2(x, edge_index)
@@ -25,5 +32,12 @@ class GCN(torch.nn.Module):
         x = x.relu()
         x = F.dropout(x, p=0.1, training=self.training)
         x = self.convend(x, edge_index)
+        
+        # x = self.class_1(x)
+        # x = x.relu()
+        # x = self.class_2(x)
+        # x = x.relu()
+        # x = self.linear_final(x)
+        # x = F.dropout(x, p=0.1, training=self.training)
 
         return torch.sigmoid(x)

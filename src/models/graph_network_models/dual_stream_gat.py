@@ -20,7 +20,7 @@ class dualGAT(torch.nn.Module):
         self.convend_2 = GATConv(heads * hidden_channels, num_labels, 1)
 
     def forward(self, x_1, edge_index_1, x_2, edge_index_2):
-        x_1 = self.conv1_1(x_1, edge_index_1)
+        x_1 = self.conv1_1(x_1.float(), edge_index_1)
         x_1 = x_1.relu()
         x_1 = F.dropout(x_1, p=0.1, training=self.training)
         x_1 = self.conv2_1(x_1, edge_index_1)
@@ -31,7 +31,7 @@ class dualGAT(torch.nn.Module):
         x_1 = F.dropout(x_1, p=0.1, training=self.training)
         x_1 = self.convend_1(x_1, edge_index_1)
 
-        x_2 = self.conv1_2(x_2, edge_index_2)
+        x_2 = self.conv1_2(x_2.float(), edge_index_2)
         x_2 = x_2.relu()
         x_2 = F.dropout(x_2, p=0.1, training=self.training)
         x_2 = self.conv2_2(x_2, edge_index_2)

@@ -5,6 +5,9 @@ import sys
 
 from tqdm import tqdm
 from sklearn import utils
+from datetime import date
+
+sys.path.append("/home/jovyan/20230406_ArticleClassifier/ArticleClassifier")
 
 sys.path.append(
   os.path.abspath(os.path.join(os.path.dirname('data_loader.py'), os.path.pardir)))
@@ -72,7 +75,7 @@ if __name__ == '__main__':
     data_for_embedding.loc[:, 'labels_m'] = data_for_embedding.loc[:, 'labels_m'].fillna('')
     # data_for_embedding.loc[:, 'list_label'] = data_for_embedding.loc[:, 'labels_m'].str.split(',')
 
-    embedding_dim = 128
+    embedding_dim = 256
 
     # if embedding_type == 'd2v':
     #     embedded_df = gensim_d2v_embedding(data_for_embedding, embedding_dim)
@@ -81,4 +84,5 @@ if __name__ == '__main__':
 
     embedded_df = fasttest_to_glove(data_for_embedding, embedding_dim)
 
-    embedded_df.to_csv(cc_path(f'data/processed/canary/word_embeddings_{embedding_type}.csv'), index=False, sep=' ', header=False)
+    today = date.today()
+    embedded_df.to_csv(cc_path(f'data/processed/canary/word_embeddings_{embedding_type}_{today}.csv'), index=False, sep=' ', header=False)

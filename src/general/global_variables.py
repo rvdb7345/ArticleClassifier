@@ -1,1 +1,1 @@
-PROJECT_PATH = "D:\\Users\\bergr2\\PycharmProjects\\ArticleClassifier"
+PROJECT_PATH = "/home/jovyan/20230406_ArticleClassifier/ArticleClassifier"

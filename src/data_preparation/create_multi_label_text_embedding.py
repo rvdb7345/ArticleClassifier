@@ -5,6 +5,7 @@ import sys
 
 from tqdm import tqdm
 from sklearn import utils
+sys.path.append("/home/jovyan/20230406_ArticleClassifier/ArticleClassifier")
 
 sys.path.append(
   os.path.abspath(os.path.join(os.path.dirname('data_loader.py'), os.path.pardir)))
@@ -58,14 +59,14 @@ def gensim_d2v_embedding(data_for_embedding, embedding_dim):
 
     return embedded_df
 
-def fasttext_embedding(data_for_embedding, embedding_dim):
+def fasttext_embedding(data_for_embedding, embedding_dim, epochs):
     cores = multiprocessing.cpu_count()
 
     sentences_vocab = data_for_embedding['abstract'].str.split(' ').tolist()
 
     print('Training FastText model...')
     model = FastText(vector_size=embedding_dim, window=3, min_count=1, workers=cores,
-                     sentences=sentences_vocab, epochs=10, callbacks=[callback()])
+                     sentences=sentences_vocab, epochs=epochs, callbacks=[callback()])
 
     print('Saving & Loading FastText model...')
     model.save('test_model.model')
@@ -100,18 +101,18 @@ if __name__ == '__main__':
          'num_refs', 'date-delivered', 'labels_m', 'labels_a'])]
     label_columns = label_columns.astype(int)
 
-    no_epochs = 10
+    no_epochs = 50
     embedding_type = 'fasttext'
 
     data_for_embedding = processed_df.dropna(subset=['abstract'])
     data_for_embedding.loc[:, 'labels_m'] = data_for_embedding.loc[:, 'labels_m'].fillna('')
     # data_for_embedding.loc[:, 'list_label'] = data_for_embedding.loc[:, 'labels_m'].str.split(',')
 
-    embedding_dim = 128
+    embedding_dim = 256
 
     if embedding_type == 'd2v':
         embedded_df = gensim_d2v_embedding(data_for_embedding, embedding_dim)
     elif embedding_type == 'fasttext':
-        embedded_df = fasttext_embedding(data_for_embedding, embedding_dim)
+        embedded_df = fasttext_embedding(data_for_embedding, embedding_dim, no_epochs)
 
-    embedded_df.to_csv(cc_path(f'data/processed/canary/embeddings_{embedding_type}.csv'), index=False)
+    embedded_df.to_csv(cc_path(f'data/processed/canary/embeddings_{embedding_type}_20230410.csv'), index=False)

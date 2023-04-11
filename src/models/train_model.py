@@ -15,16 +15,17 @@ from torch_geometric.utils.convert import from_networkx
 from sklearn.model_selection import train_test_split
 
 from tqdm import tqdm
+sys.path.append("/home/jovyan/20230406_ArticleClassifier/ArticleClassifier")
+
+import src.general.global_variables as gv
 
 sys.path.append(
     os.path.abspath(os.path.join(os.path.dirname('data_loader.py'), os.path.pardir)))
 from src.data.data_loader import DataLoader
 
-import src.general.global_variables as gv
 from src.general.utils import cc_path
 from src.models.evaluation import Metrics
 
-sys.path.append(gv.PROJECT_PATH)
 
 import matplotlib.pyplot as plt
 from sklearn.manifold import TSNE
@@ -78,7 +79,7 @@ def evaluate_metrics(model: torch.nn.Module, data: list[Data], dataset: str = 't
     elif dataset == 'train':
         mask = data[0].train_mask
     else:
-        assert False, f'Dataset {dataset} not recogined. Should be "train" or "test".'
+        assert False, f'Dataset {dataset} not recognised. Should be "train" or "test".'
     model.eval()
 
     data_inputs = [d for data_object in data for d in (data_object.x, data_object.edge_index)]
@@ -95,7 +96,7 @@ def evaluate_metrics(model: torch.nn.Module, data: list[Data], dataset: str = 't
 
 @typechecked
 def plot_metrics_during_training(train_acc_all: list, test_acc_all: list, loss_all: list, model_name: str,
-                                 metric_name: str):
+                                 metric_name: str, today, time):
     """
     Plot the evolution of metrics during training
 
@@ -107,9 +108,7 @@ def plot_metrics_during_training(train_acc_all: list, test_acc_all: list, loss_a
     Returns:
         None
     """
-    today = datetime.date.today()
-    now = datetime.datetime.now()
-    time = now.strftime("%H-%M-%S")
+
 
     fig, ax1 = plt.subplots()
     ax1.plot(np.arange(1, len(train_acc_all) + 1), train_acc_all, label='Train accuracy', c='blue')
@@ -123,11 +122,7 @@ def plot_metrics_during_training(train_acc_all: list, test_acc_all: list, loss_a
 
     plt.title(f'{model_name}')
     fig.legend(loc='lower right', fontsize='x-large')
-
-    image_path = cc_path(f'reports/figures/classification_results/{today}/')
-    if not os.path.exists(image_path):
-        os.mkdir(image_path)
-    os.mkdir(image_path + f'{time}/')
+    plt.grid()
     plt.savefig(cc_path(f'reports/figures/classification_results/{today}/{time}/{model_name}_{metric_name}.png'))
     plt.show()
 
@@ -165,7 +160,7 @@ def get_mask(index: list, size: int) -> torch.Tensor:
 @typechecked
 def make_torch_network(sampled_graph: networkx.classes.graph.Graph, embedding_df: pd.DataFrame,
                        processed_df: pd.DataFrame, train_mask: torch.Tensor, test_mask: torch.Tensor,
-                       node_label_mapping: dict) -> Data:
+                       node_label_mapping: dict, embedding_type: str) -> Data:
     """
     Parse the networkx networks to a torch geometric format with node attributes
 
@@ -180,16 +175,33 @@ def make_torch_network(sampled_graph: networkx.classes.graph.Graph, embedding_df
     Returns:
         graph dataset in torch geometric format
     """
+    
+    if embedding_type == 'general':
+        node_features = embedding_df.loc[embedding_df['pui'].isin(sampled_graph.nodes),
+                                                               embedding_df.columns.difference(['pui'])].astype(
+                                                  np.float32).to_numpy()
+    elif embedding_type == 'label_specific':
+        node_features = embedding_df.loc[embedding_df['pui'].isin(sampled_graph.nodes),
+                                         embedding_df.columns.difference(['pui'])].to_numpy()
+    
+        reshaped_node_features = np.zeros((len(node_features), len(node_features[0])*len(node_features[0][0])), dtype=np.double)
+        for idx, embedding in enumerate(node_features):
+            reshaped_node_features[idx, :]  = np.vstack(embedding).flatten()
+            
+        node_features = (reshaped_node_features - reshaped_node_features.mean())/(reshaped_node_features.std())
+        node_features = node_features.astype(np.double)
 
+        # node_features = reshaped_node_features_std.tolist()
+        
+    # print(node_features)
+    
     # set the node attributes (abstracts and labels) in the networkx graph for consistent processing later on
     networkx.set_node_attributes(sampled_graph,
                                  dict(zip(embedding_df.loc[embedding_df['pui'].isin(sampled_graph.nodes),
                                                            'pui'].astype(str).to_list(),
-                                          embedding_df.loc[embedding_df['pui'].isin(sampled_graph.nodes),
-                                                           embedding_df.columns.difference(['pui'])].astype(
-                                              np.float32).to_numpy())), 'x')
+                                          node_features)), 'x')
     networkx.set_node_attributes(sampled_graph,
-                                 dict(zip(processed_df.loc[processed_df['pui'].isin(sampled_graph.nodes),
+                                 dict(zip(label_columns.loc[label_columns['pui'].isin(sampled_graph.nodes),
                                                            'pui'].astype(str).to_list(),
                                           label_columns.loc[label_columns['pui'].isin(sampled_graph.nodes),
                                                             label_columns.columns.difference(['pui'])].astype(
@@ -263,10 +275,10 @@ if __name__ == '__main__':
     # current models to choose from: ["GCN", "GAT", "dualGCN", "dualGAT"]
     # current embedding_types to choose from: ["general", "label_specific"]
 
-    gnn_type = 'dualGAT'
+    gnn_type = 'GCN'
     subsample_size = 10000
-    data_type_to_use = ['keyword', 'author']
-    embedding_type = 'label_specific'
+    data_type_to_use = ['keyword']
+    embedding_type = 'general'
 
     all_model_parameters = {
         "GAT": {
@@ -274,7 +286,7 @@ if __name__ == '__main__':
             'heads': 8
         },
         "GCN": {
-            'hidden_channels': 32
+            'hidden_channels': 64
         },
         "dualGAT": {
             'hidden_channels': 32,
@@ -286,11 +298,12 @@ if __name__ == '__main__':
     }
 
     # load all the data
+    print('Start loading data...')
     loc_dict = {
         'processed_csv': cc_path('data/processed/canary/articles_cleaned.csv'),
-        'abstract_embeddings': cc_path('data/processed/canary/embeddings_fasttext.csv'),
+        'abstract_embeddings': cc_path('data/processed/canary/embeddings_fasttext_20230410.csv'),
         'keyword_network': cc_path('data/processed/canary/keyword_network.pickle'),
-        'xml_embeddings': cc_path('data/processed/canary/embeddings_xml.csv'),
+        'xml_embeddings': cc_path('data/processed/canary/embeddings_xml.ftr'),
         'author_network': cc_path('data/processed/canary/author_network.pickle')
     }
     data_loader = DataLoader(loc_dict)
@@ -306,20 +319,23 @@ if __name__ == '__main__':
     # process all data
     if embedding_type == 'general':
         embedding_df = data_loader.load_embeddings_csv()
+        embedding_df = standardise_embeddings(embedding_df)
     elif embedding_type == 'label_specific':
-        embedding_df = data_loader.xml_embeddings()
+        embedding_df = data_loader.load_xml_embeddings()
+        
 
-    embedding_df = standardise_embeddings(embedding_df)
+    print('Start processing data...')
+    print('Standardising embeddings...') 
 
     
     # process the labels we want to select now
 
-    # label_columns = processed_df.loc[:, ~processed_df.columns.isin(
-    #     ['file_name', 'title', 'keywords', 'abstract', 'abstract_2', 'authors', 'organization', 'chemicals',
-    #      'num_refs', 'date-delivered', 'labels_m', 'labels_a'])]
+    label_columns = processed_df.loc[:, ~processed_df.columns.isin(
+        ['file_name', 'title', 'keywords', 'abstract', 'abstract_2', 'authors', 'organization', 'chemicals',
+         'num_refs', 'date-delivered', 'labels_m', 'labels_a'])]
 
-    label_columns = processed_df.loc[:, ['pui', 'human', 'mouse', 'rat', 'nonhuman',
-                                         'controlled study', 'animal experiment']]
+    # label_columns = processed_df.loc[:, ['pui', 'human', 'mouse', 'rat', 'nonhuman',
+    #                                      'controlled study', 'animal experiment']]
     label_columns[label_columns.columns.difference(['pui'])] = label_columns[
         label_columns.columns.difference(['pui'])].astype(int)
     features = ['file_name', 'pui', 'title', 'keywords', 'abstract', 'abstract_2', 'authors', 'organization',
@@ -336,7 +352,12 @@ if __name__ == '__main__':
     #         network.remove_node(node)
 
     # get down-sampled networks
+    print('Sampling the graphs...')
     available_nodes = list(set(author_networkx.nodes) & set(keyword_network.nodes) & set(embedding_df.pui.to_list()))
+    print('keyword', len(set(keyword_network.nodes)))
+    print('author', len(set(author_networkx.nodes)))
+    print('embedding', len(set(embedding_df.pui.to_list())))
+
     sampled_nodes = random.sample(available_nodes, subsample_size)
     sampled_author = author_networkx.subgraph(sampled_nodes).copy()
     sampled_keyword = keyword_network.subgraph(sampled_nodes).copy()
@@ -348,26 +369,33 @@ if __name__ == '__main__':
     del keyword_network
 
     # create train and test split
+    print('Creating torch datasets...')
     train_indices, test_indices = train_test_split(range(len(sampled_author)), test_size=0.2, random_state=0)
     train_mask = get_mask(train_indices, len(sampled_author))
     test_mask = get_mask(test_indices, len(sampled_author))
     author_data = make_torch_network(sampled_author, embedding_df, processed_df, train_mask, test_mask,
-                                     node_label_mapping)
+                                     node_label_mapping, embedding_type)
     keyword_data = make_torch_network(sampled_keyword, embedding_df, processed_df, train_mask, test_mask,
-                                      node_label_mapping)
+                                      node_label_mapping, embedding_type)
 
     # initiate the model
     model = initiate_model(
         gnn_type,
         all_model_parameters[gnn_type],
-        num_features=embedding_df.shape[1] - 1,
+        num_features=author_data.x.shape[1],
         num_labels=len(label_columns.columns) - 1
     )
 
     model.eval()
 
+    all_torch_data = {
+        'author': author_data,
+        'keyword': keyword_data
+    }
+    
     # get the output of an untrained model
-    data = [all_data[datatype] for datatype in data_type_to_use]
+    data = [all_torch_data[datatype] for datatype in data_type_to_use]
+    print('This is the data object: ', data)
     data_inputs = [d for data_object in data for d in (data_object.x, data_object.edge_index)]
 
     out = model(*data_inputs)
@@ -375,35 +403,74 @@ if __name__ == '__main__':
     # visualize(out, color=data.y.argmax(dim=1))
 
     # set training parameters
+    print('Start training procedure...')
     optimizer = torch.optim.Adam(model.parameters(), lr=0.01, weight_decay=1e-3)
-    criterion = torch.nn.BCELoss()
+    
+    label_occs = label_columns[label_columns.columns.difference(['pui'])].sum().to_list()
+    weight = torch.tensor(label_occs) / sum(label_occs)
+    
+
+    criterion = torch.nn.BCELoss(weight = 1/weight)
 
     # train model
-    train_acc_all = []
-    test_acc_all = []
+    all_metrics = evaluate_metrics(model, data, dataset='train').keys()
+    train_metrics_all = {key: [] for key in all_metrics}
+    test_metrics_all = {key: [] for key in all_metrics}
     loss_all = []
 
-    num_epochs = 100
+    num_epochs = 50
     plot_metric = "Macro F1 score"
     for epoch in (pbar := tqdm(range(1, num_epochs))):
         loss = train(model, data, optimizer, criterion)
 
         train_metrics = evaluate_metrics(model, data, dataset='train')
         test_metrics = evaluate_metrics(model, data, dataset='test')
-        train_acc_all.append(train_metrics[plot_metric])
-        test_acc_all.append(test_metrics[plot_metric])
+        
+        for metric in train_metrics.keys():
+            train_metrics_all[metric].append(train_metrics[metric])
+            test_metrics_all[metric].append(test_metrics[metric])
+            
         loss_all.append(loss.item())
         pbar.set_description(f'Epoch: {epoch:03d}, Loss: {loss:.4f}')
+    
+    print(test_metrics)
 
-    plot_metrics_during_training(train_acc_all, test_acc_all, loss_all, model_name=gnn_type, metric_name=plot_metric)
+    today = datetime.date.today()
+    now = datetime.datetime.now()
+    time = now.strftime("%H-%M-%S")
+    
+    image_path = cc_path(f'reports/figures/classification_results/{today}/')
+    if not os.path.exists(image_path):
+        os.mkdir(image_path)
+    os.mkdir(image_path + f'{time}/')
+    for metric in all_metrics:
+        if 'Micro' in metric or 'Macro' in metric:
+            plot_metrics_during_training(train_metrics_all[metric], test_metrics_all[metric], loss_all, model_name=gnn_type, metric_name=metric, today=today, time=time)
 
+    
+    
+    
     # get output from trained model
-    # model.eval()
-    # out = model(data.x, data.edge_index)
+    model.eval()
+    out = model(*data_inputs)
+    print('The predictions of the test set before training: ', out[author_data.test_mask].detach().numpy())
 
     # get the test accuracy
-    evaluate_metrics(model, data, dataset='train')
-    evaluate_metrics(model, data, dataset='test')
+    print('Evaluating model performance...')
+    train_end_metrics = evaluate_metrics(model, data, dataset='train')
+    test_end_metrics = evaluate_metrics(model, data, dataset='test')
+    
+    
+    for metric in all_metrics:
+        if not 'Micro' in metric or not 'Macro' in metric:
+            plt.figure()
+            plt.title(f'{metric} of all labels')
+            plt.bar(range(len(label_columns.columns.difference(['pui']))), test_end_metrics['F1 score'], tick_label=label_columns.columns.difference(['pui']))
+            plt.xticks(rotation=90)
+            plt.tight_layout()
+            plt.savefig(cc_path(f'reports/figures/classification_results/{today}/{time}/{gnn_type}_{metric}_label.png'))
+            plt.show()
+    
     # print(f'Test Accuracy: {test_acc:.4f}')
 
-    visualize(out, color=data.y.argmax(dim=1))
+    # visualize(out, color=data.y.argmax(dim=1))

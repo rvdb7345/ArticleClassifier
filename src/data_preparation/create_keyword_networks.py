@@ -1,5 +1,7 @@
 """This file contains the sequence for generating the keyword network from the cleaned dataset."""
 import sys
+sys.path.append("/home/jovyan/20230406_ArticleClassifier/ArticleClassifier")
+
 import src.general.global_variables as gv
 from src.general.utils import cc_path
 
