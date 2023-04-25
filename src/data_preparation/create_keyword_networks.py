@@ -20,7 +20,7 @@ if __name__ == '__main__':
     processed_df['pui'] = processed_df['pui'].astype(str)
 
     network_constructor = KeywordNetworkConstructor(processed_df)
-    keyword_network = network_constructor.generate_network()
+    keyword_network = network_constructor.generate_network(weight_type='inverse_weighted')
 
-    with open(cc_path('data/processed/canary/keyword_network.pickle'), 'wb') as file:
+    with open(cc_path('data/processed/canary/keyword_network_weighted.pickle'), 'wb') as file:
         pickle.dump(keyword_network, file)

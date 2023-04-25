@@ -15,10 +15,12 @@ class NetworkConstructor():
         assert False, f'Explosion function not defined for {self.network_type}'
         pass
 
-    def generate_network(self) -> nx.Graph:
+    def generate_network(self, weight_type: str) -> nx.Graph:
         """
         Generate network x graph for the data.
 
+        Arguments:
+            weight_type (str): how to assign weights to the edges
         Returns:
             A network with the articles as nodes
         """
@@ -35,15 +37,26 @@ class NetworkConstructor():
         # remove isolated items
         grouped_all_combinations_not_empty_df = grouped_all_combinations_df[
             grouped_all_combinations_df.map(lambda d: len(d)) > 0]
+        
+        # get the number times an attribute is used to create a link
+        link_type_count = grouped_all_combinations_df.map(lambda d: len(d))
 
         # get individual rows for each link
         all_links_df = grouped_all_combinations_not_empty_df.to_frame().explode(0)
+        
+        # add weight of the edge
+        if weight_type == 'not_weighted':
+            all_links_df['weight'] = 1
+        elif weight_type == 'weighted':
+            all_links_df['weight'] = link_type_count
+        elif weight_type == 'inverse_weighted':
+            all_links_df['weight'] = 1 / link_type_count
 
         # compose edge list
-        all_links_df[['from', 'to']] = pd.DataFrame(all_links_df[0].tolist(), index=all_links_df.index)
+        all_links_df[['from', 'to']] = all_links_df[0].to_list()
         all_links_df.drop(0, inplace=True, axis=1)
 
         # create a networkx graph from the edge list that was just constructed
-        networkx_graph = nx.from_pandas_edgelist(all_links_df.iloc[:3000000], source='from', target='to')
+        networkx_graph = nx.from_pandas_edgelist(all_links_df, source='from', target='to', edge_attr='weight')
 
         return networkx_graph

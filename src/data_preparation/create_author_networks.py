@@ -19,7 +19,7 @@ if __name__ == '__main__':
     processed_df['pui'] = processed_df['pui'].astype(str)
 
     network_constructor = AuthorNetworkConstructor(processed_df)
-    author_network = network_constructor.generate_network()
+    author_network = network_constructor.generate_network(weight_type='not_weighted')
 
     with open(cc_path('data/processed/canary/author_network.pickle'), 'wb') as file:
         pickle.dump(author_network, file)
