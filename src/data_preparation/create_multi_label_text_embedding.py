@@ -38,6 +38,8 @@ class callback(CallbackAny2Vec):
         self.epoch += 1
 
 def gensim_d2v_embedding(data_for_embedding, embedding_dim):
+    """Train a D2V model on the textual data and create embeddings."""
+    
     # tag the documents with all the labels
     documents = [TaggedDocument(doc['abstract'], tags=[label])
                  for i, doc in data_for_embedding.iterrows()
@@ -60,6 +62,8 @@ def gensim_d2v_embedding(data_for_embedding, embedding_dim):
     return embedded_df
 
 def fasttext_embedding(data_for_embedding, embedding_dim, epochs):
+    """Train a FastText embedding model on our documents and embed the text."""
+    
     cores = multiprocessing.cpu_count()
 
     sentences_vocab = data_for_embedding['abstract'].str.split(' ').tolist()
@@ -86,8 +90,6 @@ def fasttext_embedding(data_for_embedding, embedding_dim, epochs):
     embedded_df[embedding_cols] = embedded_docs
 
     return embedded_df
-
-
 
 
 if __name__ == '__main__':
