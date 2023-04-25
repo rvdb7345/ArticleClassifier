@@ -1,0 +1,118 @@
+"""This file contains all the data processing that needs to be done to get to trainable data."""
+
+import os
+import sys
+sys.path.append("/home/jovyan/20230406_ArticleClassifier/ArticleClassifier")
+from src.general.utils import cc_path
+
+import pandas as pd
+import numpy as np
+import networkx
+import torch
+from torch_geometric.data import Data
+
+
+def standardise_embeddings(df: pd.DataFrame) -> pd.DataFrame:
+    """
+    Standardise the abstract embeddings.
+    Args:
+        df (pd.DataFrame): dataframe with the embeddings
+
+    Returns:
+        standardised embeddings
+    """
+    df[df.columns.difference(['pui'])] = \
+        (df[df.columns.difference(['pui'])] -
+         df[df.columns.difference(['pui'])].mean()) / \
+        df[df.columns.difference(['pui'])].std()
+    return df
+
+
+def convert_networkx_to_torch(sampled_graph: networkx.classes.graph.Graph, embedding_df: pd.DataFrame,
+                       processed_df: pd.DataFrame, train_mask: torch.Tensor, test_mask: torch.Tensor,
+                       node_label_mapping: dict, embedding_type: str) -> Data:
+    """
+    Parse the networkx networks to a torch geometric format with node attributes
+
+    Args:
+        sampled_graph (networkx.classes.graph.Graph): A subsampled networkx graph
+        embedding_df (pd.DataFrame): dataframe of standardised abstract embeddings
+        processed_df (pd.DataFrame): dataframe with the labels
+        train_mask (torch.Tensor): indices of train set
+        test_mask (torch.Tensor): indices of test set
+        node_label_mapping (dict): mapping between pui's and incremental reindexing
+        embedding_type (str): the type of embedding that is used
+    Returns:
+        graph dataset in torch geometric format
+    """
+    
+    if embedding_type == 'general' or embedding_type == 'scibert':
+        node_features = embedding_df.loc[embedding_df['pui'].isin(sampled_graph.nodes),
+                                                               embedding_df.columns.difference(['pui'])].astype(
+                                                  np.float32).to_numpy()
+    elif embedding_type == 'label_specific':
+        node_features = embedding_df.loc[embedding_df['pui'].isin(sampled_graph.nodes),
+                                         embedding_df.columns.difference(['pui'])].to_numpy()
+    
+        reshaped_node_features = np.zeros((len(node_features), len(node_features[0])*len(node_features[0][0])), dtype=np.double)
+        for idx, embedding in enumerate(node_features):
+            reshaped_node_features[idx, :]  = np.vstack(embedding).flatten()
+            
+        node_features = (reshaped_node_features - reshaped_node_features.mean())/(reshaped_node_features.std())
+        node_features = node_features.astype(np.double)
+
+        # node_features = reshaped_node_features_std.tolist()
+            
+    # set the node attributes (abstracts and labels) in the networkx graph for consistent processing later on
+    networkx.set_node_attributes(sampled_graph,
+                                 dict(zip(embedding_df.loc[embedding_df['pui'].isin(sampled_graph.nodes),
+                                                           'pui'].astype(str).to_list(),
+                                          node_features)), 'x')
+    networkx.set_node_attributes(sampled_graph,
+                                 dict(zip(label_columns.loc[label_columns['pui'].isin(sampled_graph.nodes),
+                                                           'pui'].astype(str).to_list(),
+                                          label_columns.loc[label_columns['pui'].isin(sampled_graph.nodes),
+                                                            label_columns.columns.difference(['pui'])].astype(
+                                              np.float32).to_numpy())), 'y')
+
+    # set the ids at incremental integers.
+    sampled_graph = networkx.relabel_nodes(sampled_graph, node_label_mapping)
+
+    # get the x and the y from the networkx graph
+    # TODO: enforce order of list for piece of mind
+    x = np.array([emb['x'] for (u, emb) in sampled_graph.nodes(data=True)])
+    y = np.array([emb['y'] for (u, emb) in sampled_graph.nodes(data=True)])
+    edge_weights = np.array([attrs['weight'] for a, b, attrs in sampled_graph.edges(data=True)])
+
+    # create the torch data object for further training
+    data = Data(x=torch.from_numpy(x),
+                edge_index=torch.from_numpy(np.array(sampled_graph.edges(data=False), dtype=np.int32).T),
+                y=torch.from_numpy(y),
+                train_mask=train_mask,
+                test_mask=test_mask,
+                edge_weight=edge_weights, batch_size=64)
+    
+    data.edge_index = to_undirected(data.edge_index)
+    data.edge_index, _ = add_remaining_self_loops(data.edge_index)
+
+    return data
+
+def get_mask(index: list, size: int) -> torch.Tensor:
+    """
+    Get a tensor mask of the indices that service as training and test
+
+    Args:
+        index (list): sample indices that belong to certain set
+        size (int): total size of dataset
+
+    Returns:
+        boolean array indicating which samples belong to a certain set
+    """
+
+    mask = np.repeat([False], size)
+    mask[index] = True
+    mask = torch.tensor(mask, dtype=torch.bool)
+    return mask
+
+
+
