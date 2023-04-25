@@ -60,6 +60,14 @@ class DataLoader():
         embeddings_csv['pui'] = embeddings_csv['pui'].astype(str)
 
         return embeddings_csv
+    
+    def load_scibert_embeddings_csv(self):
+        assert 'scibert_embeddings' in self.data_locs.keys(), \
+            f'Cannot load scibert_embeddings data as path is not given, only paths for {self.data_locs.keys()}'
+        embeddings_csv = pd.read_csv(self.data_locs['scibert_embeddings'])
+        embeddings_csv['pui'] = embeddings_csv['pui'].astype(str)
+
+        return embeddings_csv
 
     def load_author_network(self):
         assert 'author_network' in self.data_locs.keys(), \
@@ -79,6 +87,16 @@ class DataLoader():
 
         return network
 
+    def load_label_network(self):
+        assert 'keyword_network' in self.data_locs.keys(), \
+            f'Cannot load keyword_network data as path is not given, only paths for {self.data_locs.keys()}'
+
+        with (open(self.data_locs['label_network'], "rb")) as file:
+            network = pickle.load(file)
+
+        return network
+
+    
     def load_xml_embeddings(self):
         assert 'xml_embeddings' in self.data_locs.keys(), \
             f'Cannot load xml_embeddings data as path is not given, only paths for {self.data_locs.keys()}'
