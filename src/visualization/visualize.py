@@ -40,6 +40,7 @@ def plot_metrics_during_training(train_acc_all: list, test_acc_all: list, loss_a
 
 
 def tsne(h, color):
+    """Use t-SNE to visualize the large number of features in two dimensions colored by the label."""
     z = TSNE(n_components=2).fit_transform(h.detach().cpu().numpy())
 
     plt.figure(figsize=(10, 10))
