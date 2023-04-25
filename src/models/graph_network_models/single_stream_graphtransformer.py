@@ -1,19 +1,19 @@
-"""This file defines the SAGE single stream model."""
+"""This file defines the graph transformer single stream model."""
 
-from torch_geometric.nn import SAGEConv
+from torch_geometric.nn import TransformerConv
 import torch
 import torch.nn.functional as F
 
 
-class SAGE(torch.nn.Module):
-    def __init__(self, hidden_channels, num_features, num_labels):
+class GraphTransformer(torch.nn.Module):
+    def __init__(self, hidden_channels, num_features, num_labels, heads=4):
         super().__init__()
         
         torch.manual_seed(1234567)
-        self.conv1 = SAGEConv(num_features, hidden_channels)
-        self.conv2 = SAGEConv(hidden_channels, hidden_channels)
-        self.conv3 = SAGEConv(hidden_channels, hidden_channels)
-        self.convend = SAGEConv(hidden_channels, num_labels)    
+        self.conv1 = TransformerConv(num_features, hidden_channels, heads)
+        self.conv2 = TransformerConv(heads * hidden_channels, hidden_channels, heads)
+        self.conv3 = TransformerConv(heads * hidden_channels, hidden_channels, heads)
+        self.convend = TransformerConv(heads * hidden_channels, num_labels, 1)    
 
     def forward(self, x, edge_index):
         edge_index = edge_index.long()
