@@ -5,7 +5,8 @@ sys.path.append("/home/jovyan/20230406_ArticleClassifier/ArticleClassifier")
 from src.general.utils import cc_path
 
 from sklearn.manifold import TSNE
-
+import matplotlib.pyplot as plt
+import numpy as np
 
 def plot_metrics_during_training(train_acc_all: list, test_acc_all: list, loss_all: list, model_name: str,
                                  metric_name: str, today, time):
