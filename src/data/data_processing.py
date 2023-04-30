@@ -10,6 +10,7 @@ import numpy as np
 import networkx
 import torch
 from torch_geometric.data import Data
+from torch_geometric.utils import to_undirected, add_remaining_self_loops
 
 
 def standardise_embeddings(df: pd.DataFrame) -> pd.DataFrame:
@@ -29,7 +30,7 @@ def standardise_embeddings(df: pd.DataFrame) -> pd.DataFrame:
 
 
 def convert_networkx_to_torch(sampled_graph: networkx.classes.graph.Graph, embedding_df: pd.DataFrame,
-                       processed_df: pd.DataFrame, train_mask: torch.Tensor, test_mask: torch.Tensor,
+                       label_columns: pd.DataFrame, train_mask: torch.Tensor, val_mask: torch.Tensor, test_mask: torch.Tensor,
                        node_label_mapping: dict, embedding_type: str) -> Data:
     """
     Parse the networkx networks to a torch geometric format with node attributes
@@ -37,7 +38,7 @@ def convert_networkx_to_torch(sampled_graph: networkx.classes.graph.Graph, embed
     Args:
         sampled_graph (networkx.classes.graph.Graph): A subsampled networkx graph
         embedding_df (pd.DataFrame): dataframe of standardised abstract embeddings
-        processed_df (pd.DataFrame): dataframe with the labels
+        label_columns (pd.DataFrame): dataframe with the labels
         train_mask (torch.Tensor): indices of train set
         test_mask (torch.Tensor): indices of test set
         node_label_mapping (dict): mapping between pui's and incremental reindexing
@@ -89,9 +90,10 @@ def convert_networkx_to_torch(sampled_graph: networkx.classes.graph.Graph, embed
                 edge_index=torch.from_numpy(np.array(sampled_graph.edges(data=False), dtype=np.int32).T),
                 y=torch.from_numpy(y),
                 train_mask=train_mask,
+                val_mask=val_mask,
                 test_mask=test_mask,
                 edge_weight=edge_weights, batch_size=64)
-    
+
     data.edge_index = to_undirected(data.edge_index)
     data.edge_index, _ = add_remaining_self_loops(data.edge_index)
 
@@ -109,6 +111,10 @@ def get_mask(index: list, size: int) -> torch.Tensor:
         boolean array indicating which samples belong to a certain set
     """
 
+    # filter indices when using a smaller set
+    index = [idx for idx in index if idx < size]
+    
+    # create mask
     mask = np.repeat([False], size)
     mask[index] = True
     mask = torch.tensor(mask, dtype=torch.bool)
