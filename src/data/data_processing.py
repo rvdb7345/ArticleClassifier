@@ -92,12 +92,14 @@ def convert_networkx_to_torch(sampled_graph: networkx.classes.graph.Graph, embed
                 train_mask=train_mask,
                 val_mask=val_mask,
                 test_mask=test_mask,
-                edge_weight=edge_weights, batch_size=64)
+                edge_weight=edge_weights)
 
     data.edge_index = to_undirected(data.edge_index)
     data.edge_index, _ = add_remaining_self_loops(data.edge_index)
 
     return data
+
+
 
 def get_mask(index: list, size: int) -> torch.Tensor:
     """
