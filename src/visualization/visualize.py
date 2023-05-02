@@ -50,3 +50,18 @@ def tsne(h, color):
 
     plt.scatter(z[:, 0], z[:, 1], s=70, c=color, cmap="Set2")
     plt.show()
+
+def plot_label_count_in_datasets(label_columns, train_puis, val_puis, test_puis, save_location):
+    """Plot the count of labels in the different datasets."""
+    label_occurrences_train = label_columns.loc[label_columns.pui.isin(train_puis), label_columns.columns.difference(['pui'])].astype(int).sum().sort_values(ascending=False)
+    label_occurrences_val = label_columns.loc[label_columns.pui.isin(val_puis), label_columns.columns.difference(['pui'])].astype(int).sum().sort_values(ascending=False)
+    label_occurrences_test = label_columns.loc[label_columns.pui.isin(test_puis), label_columns.columns.difference(['pui'])].astype(int).sum().sort_values(ascending=False)
+    label_occurrences = pd.concat([label_occurrences_train,label_occurrences_val,label_occurrences_test], axis=1)
+    label_occurrences.rename({0: 'Train', 1: 'Validation', 2: 'Test'}, inplace=True, axis=1)
+    label_occurrences.plot(kind='bar', figsize=(15,5))
+    plt.ylabel(f'Label presence among articles (%)')
+    plt.yscale('log')
+    plt.grid()
+    plt.tight_layout()
+    plt.savefig(save_location, dpi=300)
+    
