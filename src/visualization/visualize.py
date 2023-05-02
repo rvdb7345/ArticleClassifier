@@ -65,3 +65,13 @@ def plot_label_count_in_datasets(label_columns, train_puis, val_puis, test_puis,
     plt.tight_layout()
     plt.savefig(save_location, dpi=300)
     
+    
+def plot_performance_per_label(metric_name, metric_scores, labels, run_id, today, time, gnn_type):
+    """Plot the performance of a model but per metric."""
+    plt.figure()
+    plt.title(f'{metric_name} of all labels')
+    plt.bar(range(len(metric_scores)), metric_scores, tick_label=labels)
+    plt.xticks(rotation=90)
+    plt.tight_layout()
+    plt.savefig(cc_path(f'reports/figures/classification_results/{today}/{time}/{run_id}_{gnn_type}_{metric_name}_label.png'))
+    plt.show()
