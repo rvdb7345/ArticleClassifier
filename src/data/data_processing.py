@@ -5,6 +5,7 @@ import sys
 sys.path.append("/home/jovyan/20230406_ArticleClassifier/ArticleClassifier")
 from src.general.utils import cc_path
 
+import json
 import pandas as pd
 import numpy as np
 import networkx
@@ -124,3 +125,55 @@ def get_mask(index: list, size: int) -> torch.Tensor:
 
 
 
+def gather_set_indices(subsample_size: int, total_dataset_size: int, sampled_author):
+    """
+    Get the indices for each of the dataset
+    Args:
+        subsample_size (int): size we downsampled to
+        total_dataset_size (int): total size of the dataset
+        sampled_author (): the author network
+
+    Returns:
+        indices for each dataset split and the mapping from node to label
+    """
+    # when sample is downsized (for speed) need a new node to integer mapping for ids to be incremental
+    if subsample_size < total_dataset_size:
+        node_label_mapping = dict(zip(sampled_author.nodes, range(len(sampled_author))))
+    else:
+        with open(cc_path("data/pui_idx_mapping.json"), "r") as outfile:
+            node_label_mapping = json.load(outfile)
+
+    with open(cc_path(f'data/train_indices.txt')) as f:
+        train_puis = f.read().splitlines()
+        train_indices = list(map(node_label_mapping.get, train_puis))
+    with open(cc_path(f'data/val_indices.txt')) as f:
+        val_puis = f.read().splitlines()
+        val_indices = list(map(node_label_mapping.get, val_puis))
+    with open(cc_path(f'data/test_indices.txt')) as f:
+        test_puis = f.read().splitlines()
+        test_indices = list(map(node_label_mapping.get, test_puis))
+
+    # if downsampled, not all original puis are in our trainset, so drop those
+    if subsample_size < total_dataset_size:
+        train_indices = [idx for idx in train_indices if idx]
+        val_indices = [idx for idx in val_indices if idx]
+        test_indices = [idx for idx in test_indices if idx]
+        
+    return train_indices, val_indices, test_indices, node_label_mapping
+
+
+def drop_keyword_edges(graph_network: networkx.classes.graph.Graph, 
+                       edge_weight_threshold: float = 0.1) -> networkx.classes.graph.Graph:
+    """
+    Drop all edges of which the weight is below the set threshold.
+    Args:
+        keyword_network (networkx.classes.graph.Graph): a networkx network
+        edge_weight_threshold (float): the minimal weight of edges
+
+    Returns:
+        Edge-pruned network
+    """
+    to_remove = [(a, b) for a, b, attrs in graph_network.edges(data=True) if attrs["weight"] < edge_weight_threshold]
+    graph_network.remove_edges_from(to_remove)
+
+    return graph_network

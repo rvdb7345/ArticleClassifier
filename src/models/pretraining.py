@@ -92,15 +92,24 @@ class NegativeEdge:
         
         return data
     
-def train_pretrain(model, device, loader, optimizer, batch, criterion_pretrain):
+def train_pretrain(model, device, loader, optimizer, batch, criterion_pretrain, all_torch_data, data_type_to_use):
     model.train()
 
     train_acc_accum = 0
     train_loss_accum = 0
     # for step, batch in enumerate(loader):
     batch = batch.to(device)
+    
 
-    node_emb = model(batch.x, batch.edge_index, return_embeddings=True)
+    data = [all_torch_data[datatype] for datatype in data_type_to_use]
+    data_inputs = [d for data_object in data for d in (data_object.x.float(), data_object.edge_index)]
+
+    if 'label' in data_type_to_use:
+        data_inputs.append(all_torch_data['label'].edge_weight.float())
+
+    data_inputs.append(True)
+        
+    node_emb = model(*data_inputs)
 
     positive_score = torch.sum(node_emb[batch.edge_index[0, ::2]] * node_emb[batch.edge_index[1, ::2]], dim = 1)
     negative_score = torch.sum(node_emb[batch.negative_edge_index[0]] * node_emb[batch.negative_edge_index[1]], dim = 1)

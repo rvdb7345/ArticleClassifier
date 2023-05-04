@@ -75,3 +75,39 @@ def plot_performance_per_label(metric_name, metric_scores, labels, run_id, today
     plt.tight_layout()
     plt.savefig(cc_path(f'reports/figures/classification_results/{today}/{time}/{run_id}_{gnn_type}_{metric_name}_label.png'))
     plt.show()
+    
+    
+def plot_threshold_effect_on_edges(keyword_network, save_path):
+    """
+    Plot the number of remaining edges at different weight thresholds.
+    
+    Args:
+        keyword_network (): pytorch geometric keyword network
+        save_path (str): location to save plot
+
+    Returns:
+
+    """
+    all_edge_weights = [attrs["weight"] for a, b, attrs in keyword_network.edges(data=True)]
+
+    # Sort the list in descending order
+    sorted_values = sorted(all_edge_weights)
+
+    # Prepare the data for plotting
+    x_values = []
+    y_values = []
+
+    for i, threshold in enumerate(sorted_values):
+        x_values.append(threshold)
+        y_values.append(len(sorted_values) - i)
+
+    # Create the plot
+    plt.plot(x_values, y_values)
+    plt.xlabel('Threshold')
+    plt.ylabel('Number of Edges')
+    plt.yscale('log')
+    plt.xscale('log')
+
+    plt.grid()
+    plt.savefig(save_path, dpi=300)
+    plt.show()

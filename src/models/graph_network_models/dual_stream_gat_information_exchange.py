@@ -1,4 +1,5 @@
-"""This file defines the GCN single stream model."""
+"""This file defines the GAT dual stream model in 
+which the output of each convolutional layers is changed with learnable parameters."""
 
 from torch_geometric.nn import GATv2Conv
 import torch
@@ -9,14 +10,14 @@ class dualGAT(torch.nn.Module):
     def __init__(self, hidden_channels, embedding_size, num_features, num_labels, num_conv_layers, heads, dropout):
         super().__init__()
         torch.manual_seed(1234567)
-
+        
         # Set parameters for forward function
         self.dropout = dropout
         self.num_layers = num_conv_layers
-
+        
         # Stream numero uno
         self.convs_1 = torch.nn.ModuleList()
-
+        
         if self.num_layers > 1:
             self.convs_1.append(GATv2Conv(num_features, hidden_channels, heads))
             for i in range(2, self.num_layers):
@@ -27,7 +28,7 @@ class dualGAT(torch.nn.Module):
 
         # Stream numero dos
         self.convs_2 = torch.nn.ModuleList()
-
+        
         if self.num_layers > 1:
             self.convs_2.append(GATv2Conv(num_features, hidden_channels, heads))
             for i in range(2, self.num_layers):
@@ -36,25 +37,30 @@ class dualGAT(torch.nn.Module):
         else:
             self.convs_2.append(GATv2Conv(num_features, embedding_size, heads))
 
-        self.attention = torch.nn.Linear(embedding_size * heads, 1)
-        self.linear_final_end = torch.nn.Linear(embedding_size * heads, num_labels)
+        self.linear_merge = torch.nn.Linear(embedding_size*heads * 2, embedding_size*heads)
+        self.linear_final_end = torch.nn.Linear(embedding_size*heads, num_labels)
+
+        # Learnable weights for exchanging information
+        self.alpha = torch.nn.Parameter(torch.Tensor(1, 1).fill_(0.5))
+        self.beta = torch.nn.Parameter(torch.Tensor(1, 1).fill_(0.5))
 
     def forward(self, x_1, edge_index_1, x_2, edge_index_2, return_embeddings=False):
         
         # Process the layers for both streams
         for i in range(self.num_layers):
             # Process stream 1
-            x_1 = F.dropout(F.elu(self.convs_1[i](x_1, edge_index_1)), p=self.dropout, training=self.training)
-
+            x_1_new = F.dropout(F.elu(self.convs_1[i](x_1, edge_index_1)), p=self.dropout, training=self.training)
+            
             # Process stream 2
-            x_2 = F.dropout(F.elu(self.convs_2[i](x_2, edge_index_2)), p=self.dropout, training=self.training)
+            x_2_new = F.dropout(F.elu(self.convs_2[i](x_2, edge_index_2)), p=self.dropout, training=self.training)
+            
+            # Exchange information between the two streams using learnable weights
+            x_1 = self.alpha * x_1_new + self.beta * x_2_new
+            x_2 = self.alpha * x_2_new + self.beta * x_1_new
 
-        # Compute attention scores for both streams
-        attn_scores_1 = F.softmax(self.attention(x_1), dim=1)
-        attn_scores_2 = F.softmax(self.attention(x_2), dim=1)
-
-        # Apply attention scores to merge the output of two models
-        x = attn_scores_1 * x_1 + attn_scores_2 * x_2
+        # Merging the output of two models
+        x_comb = torch.cat([x_1, x_2], dim=1)
+        x = self.linear_merge(x_comb)
 
         if return_embeddings:
             return x
