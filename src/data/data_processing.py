@@ -2,6 +2,7 @@
 
 import os
 import sys
+
 sys.path.append("/home/jovyan/20230406_ArticleClassifier/ArticleClassifier")
 from src.general.utils import cc_path
 
@@ -31,8 +32,9 @@ def standardise_embeddings(df: pd.DataFrame) -> pd.DataFrame:
 
 
 def convert_networkx_to_torch(sampled_graph: networkx.classes.graph.Graph, embedding_df: pd.DataFrame,
-                       label_columns: pd.DataFrame, train_mask: torch.Tensor, val_mask: torch.Tensor, test_mask: torch.Tensor,
-                       node_label_mapping: dict, embedding_type: str) -> Data:
+                              label_columns: pd.DataFrame, train_mask: torch.Tensor, val_mask: torch.Tensor,
+                              test_mask: torch.Tensor,
+                              node_label_mapping: dict, embedding_type: str) -> Data:
     """
     Parse the networkx networks to a torch geometric format with node attributes
 
@@ -47,24 +49,25 @@ def convert_networkx_to_torch(sampled_graph: networkx.classes.graph.Graph, embed
     Returns:
         graph dataset in torch geometric format
     """
-    
+
     if embedding_type == 'general' or embedding_type == 'scibert':
         node_features = embedding_df.loc[embedding_df['pui'].isin(sampled_graph.nodes),
-                                                               embedding_df.columns.difference(['pui'])].astype(
-                                                  np.float32).to_numpy()
+                                         embedding_df.columns.difference(['pui'])].astype(
+            np.float32).to_numpy()
     elif embedding_type == 'label_specific':
         node_features = embedding_df.loc[embedding_df['pui'].isin(sampled_graph.nodes),
                                          embedding_df.columns.difference(['pui'])].to_numpy()
-    
-        reshaped_node_features = np.zeros((len(node_features), len(node_features[0])*len(node_features[0][0])), dtype=np.double)
+
+        reshaped_node_features = np.zeros((len(node_features), len(node_features[0]) * len(node_features[0][0])),
+                                          dtype=np.double)
         for idx, embedding in enumerate(node_features):
-            reshaped_node_features[idx, :]  = np.vstack(embedding).flatten()
-            
-        node_features = (reshaped_node_features - reshaped_node_features.mean())/(reshaped_node_features.std())
+            reshaped_node_features[idx, :] = np.vstack(embedding).flatten()
+
+        node_features = (reshaped_node_features - reshaped_node_features.mean()) / (reshaped_node_features.std())
         node_features = node_features.astype(np.double)
 
         # node_features = reshaped_node_features_std.tolist()
-            
+
     # set the node attributes (abstracts and labels) in the networkx graph for consistent processing later on
     networkx.set_node_attributes(sampled_graph,
                                  dict(zip(embedding_df.loc[embedding_df['pui'].isin(sampled_graph.nodes),
@@ -72,7 +75,7 @@ def convert_networkx_to_torch(sampled_graph: networkx.classes.graph.Graph, embed
                                           node_features)), 'x')
     networkx.set_node_attributes(sampled_graph,
                                  dict(zip(label_columns.loc[label_columns['pui'].isin(sampled_graph.nodes),
-                                                           'pui'].astype(str).to_list(),
+                                                            'pui'].astype(str).to_list(),
                                           label_columns.loc[label_columns['pui'].isin(sampled_graph.nodes),
                                                             label_columns.columns.difference(['pui'])].astype(
                                               np.float32).to_numpy())), 'y')
@@ -101,7 +104,6 @@ def convert_networkx_to_torch(sampled_graph: networkx.classes.graph.Graph, embed
     return data
 
 
-
 def get_mask(index: list, size: int) -> torch.Tensor:
     """
     Get a tensor mask of the indices that service as training and test
@@ -116,13 +118,12 @@ def get_mask(index: list, size: int) -> torch.Tensor:
 
     # filter indices when using a smaller set
     index = [idx for idx in index if idx < size]
-    
+
     # create mask
     mask = np.repeat([False], size)
     mask[index] = True
     mask = torch.tensor(mask, dtype=torch.bool)
     return mask
-
 
 
 def gather_set_indices(subsample_size: int, total_dataset_size: int, sampled_author):
@@ -158,16 +159,16 @@ def gather_set_indices(subsample_size: int, total_dataset_size: int, sampled_aut
         train_indices = [idx for idx in train_indices if idx]
         val_indices = [idx for idx in val_indices if idx]
         test_indices = [idx for idx in test_indices if idx]
-        
+
     return train_indices, val_indices, test_indices, node_label_mapping
 
 
-def drop_keyword_edges(graph_network: networkx.classes.graph.Graph, 
+def drop_keyword_edges(graph_network: networkx.classes.graph.Graph,
                        edge_weight_threshold: float = 0.1) -> networkx.classes.graph.Graph:
     """
     Drop all edges of which the weight is below the set threshold.
     Args:
-        keyword_network (networkx.classes.graph.Graph): a networkx network
+        graph_network (networkx.classes.graph.Graph): a networkx network
         edge_weight_threshold (float): the minimal weight of edges
 
     Returns:
@@ -177,3 +178,13 @@ def drop_keyword_edges(graph_network: networkx.classes.graph.Graph,
     graph_network.remove_edges_from(to_remove)
 
     return graph_network
+
+
+def configure_model_inputs(all_torch_data, data_type_to_use):
+    data = [all_torch_data[datatype] for datatype in data_type_to_use]
+    data_inputs = [d for data_object in data for d in (data_object.x.float(), data_object.edge_index)]
+
+    if 'label' in data_type_to_use:
+        data_inputs.append(all_torch_data['label'].edge_weight.float())
+
+    return data, data_inputs

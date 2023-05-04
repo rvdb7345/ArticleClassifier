@@ -50,6 +50,7 @@ def evaluate_metrics(model: torch.nn.Module, data: list[Data], dataset: str = 't
 
     return metrics
 
+
 def construct_metric_storage(dataset_names: list[str], all_metric_names: list[str]):
     """
     Create dictionaries for holding the metrics.
@@ -93,19 +94,17 @@ def retrieve_and_store_metrics(all_metrics: dict, all_metric_names: list[str], d
     return all_metrics
 
 
-def train_model(model, data, graph_num_epochs, optimizer, scheduler, criterion, graph_optimizer, data_type_to_use,
-                all_torch_data, use_batches = True):
+def train_model(model, data, graph_parameters, optimizer, scheduler, criterion, data_type_to_use,
+                all_torch_data, use_batches=True):
     """
     Train a model for the full number of epochs.
 
     Args:
         model (): the Graph model object
         data (): list with torch geometric data object necessary for model
-        graph_num_epochs (int): number of epochs to train
         optimizer (): torch optimizer for model
         scheduler (): learning rate scheduler if used
         criterion (): loss criterion
-        graph_optimizer (str): name of optimizer
         data_type_to_use (list[list]): data types to use
         all_torch_data (dict): dict with all data to use
         use_batches (bool): whether to use mini-batches
@@ -115,7 +114,7 @@ def train_model(model, data, graph_num_epochs, optimizer, scheduler, criterion, 
     """
     # define names of what to store
     dataset_names = ['train', 'val', 'test']
-    all_metric_names = evaluate_metrics(model, data, dataset='train').keys()
+    all_metric_names = list(evaluate_metrics(model, data, dataset='train').keys())
 
     # create storage locations
     all_metrics = construct_metric_storage(dataset_names, all_metric_names)
@@ -128,13 +127,15 @@ def train_model(model, data, graph_num_epochs, optimizer, scheduler, criterion, 
     # go over each epoch
     best_score = 0
     curr_scores = ''
-    for epoch in (pbar := tqdm(range(1, graph_num_epochs), position=0)):
+    for epoch in (pbar := tqdm(range(1, graph_parameters['graph_num_epochs']), position=0)):
 
         if use_batches:
-            loss = train_batch(model, loaders, optimizer, scheduler, criterion, graph_optimizer, pbar, epoch,
+            loss = train_batch(model, loaders, optimizer, scheduler, criterion,
+                               graph_parameters['graph_optimizer'], pbar, epoch,
                                curr_scores, data_type_to_use)
         else:
-            loss = train(model, data, optimizer, scheduler, criterion, graph_optimizer, data_type_to_use, all_torch_data)
+            loss = train(model, data, optimizer, scheduler, criterion, graph_parameters['graph_optimizer'],
+                         data_type_to_use, all_torch_data)
 
         # gather the metrics for all datasets
         all_metrics = retrieve_and_store_metrics(all_metrics, all_metric_names, dataset_names, model, data,
@@ -149,7 +150,7 @@ def train_model(model, data, graph_num_epochs, optimizer, scheduler, criterion, 
         if all_metrics['val']['Macro F1 score'][-1] > best_score:
             best_model = model
 
-    return best_model, all_metrics
+    return best_model, all_metrics, loss_all
 
 
 def train_batch(model, loaders, optimizer, scheduler, criterion, graph_optimizer, progress_bar, epoch, curr_scores,
