@@ -1,3 +1,4 @@
+"""This file sets the settings of the logger correctly."""
 import logging
 from typing import Dict
 

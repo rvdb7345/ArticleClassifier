@@ -1,0 +1,19 @@
+site_name: Documentation GNN ArticleClassifier
+site_url: https://GNNAC.com/
+
+theme:
+    name: readthedocs
+
+nav:
+    - Index: index.md
+    - Welcome: welcome.md
+    - Training: training.md
+    - Data Preparation: preparing_data.md
+
+
+
+
+
+
+
+

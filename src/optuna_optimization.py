@@ -157,6 +157,15 @@ def classification_head_objective(trial):
     return metrics['val']['Macro F1 score']
 
 
+def graph_optimization():
+    """Wrapper function for doing the graph optimisation."""
+    study = optuna.create_study(direction="maximize")
+    study.optimize(graph_objective, n_trials=100)
+
+def classification_head_optimization():
+    """Wrapper function for doing the classification head optimisation."""
+    study = optuna.create_study(direction="maximize")
+    study.optimize(classification_head_objective, n_trials=100)
 
 
 if __name__ == '__main__':
@@ -172,5 +181,4 @@ if __name__ == '__main__':
 #                             graph_parameters, model_structure_parameters, data_parameters, pretrain_parameters,
 #                             class_head_params, num_minority_samples)
     
-    study = optuna.create_study(direction="maximize")
-    study.optimize(graph_objective, n_trials=100)
+    graph_optimization()
