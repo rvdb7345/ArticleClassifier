@@ -8,11 +8,17 @@ import pandas as pd
 import numpy as np
 from tqdm import tqdm
 import lightgbm as gbm
+import xgboost
 
 from src.data.mlsmote import get_minority_instance, MLSMOTE
 from src.general.data_classes import Experiment
 from src.general.utils import cc_path
+from sklearn.metrics import f1_score
 
+
+def f1_eval(y_pred, y_true):
+    err = 1-f1_score(y_true, np.round(y_pred), average='macro')
+    return 'f1_err', err
 
 def generate_minority_samples(X_train_graph_embeddings: np.ndarray,
                               y_train_graph_embeddings: np.ndarray,
@@ -58,15 +64,24 @@ def train_lightgbm_classifiers(X_train: np.ndarray, y_train: np.ndarray,
     Returns:
         List[gbm.LGBMClassifier]: The trained LightGBM classifiers.
     """
+    early_stopping_rounds = 30
+#     early_stop = xgboost.callback.EarlyStopping(rounds=early_stopping_rounds,
+#                                                 metric_name='f1_err',
+#                                                 data_name='valid')
+    
+    lgbm_params.update({'early_stopping_rounds': early_stopping_rounds})
     clfs = []
     for i in range(num_labels):
-        clfs.append(gbm.LGBMClassifier(**lgbm_params))
+        clfs.append(xgboost.XGBClassifier(**lgbm_params))
+
+#     for i in tqdm(range(num_labels)):
+#         clfs[i] = clfs[i].fit(X_train, y_train[:, i],
+#                               callbacks=[gbm.log_evaluation(period=100), gbm.early_stopping(30)],
+#                               eval_set=(X_val, y_val[:, i]))
 
     for i in tqdm(range(num_labels)):
-        clfs[i] = clfs[i].fit(X_train, y_train[:, i],
-                              callbacks=[gbm.log_evaluation(period=100), gbm.early_stopping(30)],
-                              eval_set=(X_val, y_val[:, i]))
-
+        clfs[i] = clfs[i].fit(X_train, y_train[:, i], eval_set=[(X_val, y_val[:, i])], verbose=100)
+        
     return clfs
 
 
@@ -111,7 +126,7 @@ def train_classification_head(model: torch.nn.Module,
     Returns:
         Dict[str, float]: A dictionary containing the computed evaluation metrics for the classification head.
     """
-
+    # create graph embeddings
     graph_created_embeddings = model.forward(*data_inputs, return_embeddings=True)
 
     X_train_graph_embeddings = graph_created_embeddings[data[0].train_mask].detach().cpu().numpy()
@@ -122,10 +137,11 @@ def train_classification_head(model: torch.nn.Module,
     y_val_graph_embeddings = data[0].y[data[0].val_mask].detach().cpu().numpy()
     y_test_graph_embeddings = data[0].y[data[0].test_mask].detach().cpu().numpy()
 
+    # oversample minority labels
     X_train_graph_embeddings, y_train_graph_embeddings = \
         generate_minority_samples(X_train_graph_embeddings, y_train_graph_embeddings, num_minority_samples)
 
-
+    # train classifiers
     num_labels = 52
     clfs = train_lightgbm_classifiers(X_train_graph_embeddings, y_train_graph_embeddings,
                                 X_val_graph_embeddings, y_val_graph_embeddings,
