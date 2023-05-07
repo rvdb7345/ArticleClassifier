@@ -126,21 +126,25 @@ def train_model(model, data, graph_parameters, optimizer, scheduler, criterion, 
 
     # go over each epoch
     best_score = 0
+    early_stopping = 30
+    count_not_improved = 0
     curr_scores = ''
     for epoch in (pbar := tqdm(range(1, graph_parameters['graph_num_epochs']), position=0)):
 
-        if use_batches:
-            loss = train_batch(model, loaders, optimizer, scheduler, criterion,
-                               graph_parameters['graph_optimizer'], pbar, epoch,
-                               curr_scores, data_type_to_use)
-        else:
-            loss = train(model, data, optimizer, scheduler, criterion, graph_parameters['graph_optimizer'],
-                         data_type_to_use, all_torch_data)
+        if count_not_improved < early_stopping:
+            if use_batches:
+                loss = train_batch(model, loaders, optimizer, scheduler, criterion,
+                                   graph_parameters['graph_optimizer'], pbar, epoch,
+                                   curr_scores, data_type_to_use)
+            else:
+                loss = train(model, data, optimizer, scheduler, criterion, graph_parameters['graph_optimizer'],
+                             data_type_to_use, all_torch_data)
 
-        # gather the metrics for all datasets
-        all_metrics = retrieve_and_store_metrics(all_metrics, all_metric_names, dataset_names, model, data,
-                                                 data_type_to_use, all_torch_data)
-        loss_all.append(loss)
+            # gather the metrics for all datasets
+            all_metrics = retrieve_and_store_metrics(all_metrics, all_metric_names, dataset_names, model, data,
+                                                     data_type_to_use, all_torch_data)
+            
+            loss_all.append(loss)
 
         # define text for progressbar
         curr_scores = f"Train - F1 {all_metrics['train']['Macro F1 score'][-1]}, " \
@@ -149,6 +153,11 @@ def train_model(model, data, graph_parameters, optimizer, scheduler, criterion, 
         # save the best model if we see improvement
         if all_metrics['val']['Macro F1 score'][-1] > best_score:
             best_model = model
+            count_not_improved = 0
+            best_score = all_metrics['val']['Macro F1 score'][-1]
+        else:
+            count_not_improved += 1
+        
 
     return best_model, all_metrics, loss_all
 
