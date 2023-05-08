@@ -2,22 +2,37 @@
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
     <url>
          <loc>https://GNNAC.com/</loc>
-         <lastmod>2023-05-07</lastmod>
+         <lastmod>2023-05-08</lastmod>
+         <changefreq>daily</changefreq>
+    </url>
+    <url>
+         <loc>https://GNNAC.com/optimization/</loc>
+         <lastmod>2023-05-08</lastmod>
          <changefreq>daily</changefreq>
     </url>
     <url>
          <loc>https://GNNAC.com/preparing_data/</loc>
-         <lastmod>2023-05-07</lastmod>
+         <lastmod>2023-05-08</lastmod>
+         <changefreq>daily</changefreq>
+    </url>
+    <url>
+         <loc>https://GNNAC.com/project_installation/</loc>
+         <lastmod>2023-05-08</lastmod>
+         <changefreq>daily</changefreq>
+    </url>
+    <url>
+         <loc>https://GNNAC.com/settings/</loc>
+         <lastmod>2023-05-08</lastmod>
          <changefreq>daily</changefreq>
     </url>
     <url>
          <loc>https://GNNAC.com/training/</loc>
-         <lastmod>2023-05-07</lastmod>
+         <lastmod>2023-05-08</lastmod>
          <changefreq>daily</changefreq>
     </url>
     <url>
          <loc>https://GNNAC.com/welcome/</loc>
-         <lastmod>2023-05-07</lastmod>
+         <lastmod>2023-05-08</lastmod>
          <changefreq>daily</changefreq>
     </url>
 </urlset>
