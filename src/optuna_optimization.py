@@ -109,7 +109,6 @@ class_head_params = {
 
 
 # get all data
-all_torch_data, label_columns = get_all_data(data_parameters)
 
 
 def graph_objective(trial):
@@ -130,20 +129,82 @@ def graph_objective(trial):
     # run prediction and evaluation with model configuration as specified
     metrics = run_model_configuration(exp_ids, all_torch_data, label_columns.columns.difference(['pui']).tolist(),
                                       graph_parameters, model_structure_parameters, data_parameters, pretrain_parameters,
-                                      class_head_params, num_minority_samples, use_pretrain=False, only_graph=True)
+                                      class_head_params, num_minority_samples, use_pretrain=False, only_graph=True,
+                                     only_head=False)
     
     return metrics['val']['Macro F1 score']
 
 def classification_head_objective(trial):
-
-
     # current model setup
     model_structure_parameters = {
-        'embedding_size': trial.suggest_categorical('embedding_size', [32, 64, 128, 256]),
-        'hidden_channels': trial.suggest_categorical('hidden_channels', [8, 16, 32, 64, 128, 256]),
-        'heads': trial.suggest_categorical('heads', [2, 4, 8, 12, 16]),
-        'num_conv_layers': trial.suggest_categorical('num_conv_layers', [1, 2, 3, 4, 5]),
-        'dropout': trial.suggest_categorical('dropout', [0.1, 0.2, 0.3, 0.4, 0.5])
+        'embedding_size': 256,
+        'hidden_channels': 16,
+        'heads': 12,
+        'num_conv_layers': 1,
+        'dropout': 0.1
+    }
+    
+    class_head_params = {
+        "silent": 1,
+        "booster": trial.suggest_categorical("booster", ["gbtree", "dart"]),
+        "lambda": trial.suggest_float("lambda", 1e-8, 1.0),
+        "alpha": trial.suggest_float("alpha", 1e-8, 1.0),
+        "n_estimators":  trial.suggest_int("n_estimators", 50, 1000),
+        'subsample': trial.suggest_float('subsample', 0.2, 0.5),
+        'learning_rate': trial.suggest_float('learning_rate', 0.008, 0.02),
+        'max_bin': 15,
+        'colsample_bytree': trial.suggest_float('colsample_bytree', 0.2, 0.5),
+        'objective': "binary:logistic"
+    }
+    
+    if torch.cuda.is_available():
+        class_head_params.update(**{'tree_method': 'gpu_hist', 'gpu_id': 0})
+    else:
+        class_head_params.update(**{'n_jobs': -1})
+
+    if class_head_params["booster"] == "gbtree" or class_head_params["booster"] == "dart":
+        class_head_params["max_depth"] = trial.suggest_int("max_depth", 1, 7)
+        class_head_params["eta"] = trial.suggest_float("eta", 1e-8, 1.0)
+        class_head_params["gamma"] = trial.suggest_float("gamma", 1e-8, 1.0)
+        class_head_params["grow_policy"] = trial.suggest_categorical("grow_policy", ["depthwise", "lossguide"])
+    if class_head_params["booster"] == "dart":
+        class_head_params["sample_type"] = trial.suggest_categorical("sample_type", ["uniform", "weighted"])
+        class_head_params["normalize_type"] = trial.suggest_categorical("normalize_type", ["tree", "forest"])
+        class_head_params["rate_drop"] = trial.suggest_float("rate_drop", 1e-8, 1.0)
+        class_head_params["skip_drop"] = trial.suggest_float("skip_drop", 1e-8, 1.0)
+    
+
+
+    exp_ids = Experiment()
+    print(exp_ids.run_id, exp_ids.now, exp_ids.time)
+    
+    # run prediction and evaluation with model configuration as specified
+    metrics = run_model_configuration(exp_ids, all_torch_data, label_columns.columns.difference(['pui']).tolist(),
+                                      graph_parameters, model_structure_parameters, data_parameters, pretrain_parameters,
+                                      class_head_params, num_minority_samples, use_pretrain=False, only_graph=False,
+                                     load_trained_model='20230509113430')
+    
+    return metrics['lgbm_val_f1_score_macro']
+
+
+def threshold_objective(trial):
+    data_parameters = {
+        'subsample_size': 56337,
+        'total_dataset_size': 56337,
+        'data_type_to_use': ['keyword'],
+        'embedding_type': 'scibert',
+        'edge_weight_threshold': trial.suggest_float('edge_weight_threshold', 1/200, 1/2),
+    }
+
+    all_torch_data, label_columns = get_all_data(data_parameters)
+    
+    # current model setup
+    model_structure_parameters = {
+        'embedding_size': 256,
+        'hidden_channels': 16,
+        'heads': 12,
+        'num_conv_layers': 1,
+        'dropout': 0.1
     }
 
     exp_ids = Experiment()
@@ -166,6 +227,11 @@ def classification_head_optimization():
     """Wrapper function for doing the classification head optimisation."""
     study = optuna.create_study(direction="maximize")
     study.optimize(classification_head_objective, n_trials=100)
+    
+def threshold_optimization():
+    """Wrapper function for doing the classification head optimisation."""
+    study = optuna.create_study(direction="maximize")
+    study.optimize(threshold_objective, n_trials=50)
 
 
 if __name__ == '__main__':
@@ -173,12 +239,9 @@ if __name__ == '__main__':
     # Setting the threshold of logger to DEBUG
     logger.setLevel(logging.INFO)
 
-
-
-
 #     # run prediction and evaluation with model configuration as specified
 #     run_model_configuration(exp_ids, all_torch_data, label_columns.columns.difference(['pui']).tolist(),
 #                             graph_parameters, model_structure_parameters, data_parameters, pretrain_parameters,
 #                             class_head_params, num_minority_samples)
     
-    graph_optimization()
+    threshold_optimization()
