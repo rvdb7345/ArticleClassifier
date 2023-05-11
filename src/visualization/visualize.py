@@ -11,7 +11,7 @@ import numpy as np
 import pandas as pd
 
 
-def plot_metrics_during_training(train_acc_all: list, test_acc_all: list, loss_all: list, model_name: str,
+def plot_metrics_during_training(train_acc_all: list, val_acc_all: list, test_acc_all: list, loss_all: list, model_name: str,
                                  metric_name: str, today: str, time: str):
     """
     Plot the evolution of metrics during training
@@ -31,6 +31,7 @@ def plot_metrics_during_training(train_acc_all: list, test_acc_all: list, loss_a
 
     fig, ax1 = plt.subplots()
     ax1.plot(np.arange(1, len(train_acc_all) + 1), train_acc_all, label='Train accuracy', c='blue')
+    ax1.plot(np.arange(1, len(val_acc_all) + 1), val_acc_all, label='Val accuracy', c='green')
     ax1.plot(np.arange(1, len(test_acc_all) + 1), test_acc_all, label='Testing accuracy', c='red')
     ax1.set_xlabel('Epochs')
     ax1.set_ylabel(metric_name)
@@ -46,7 +47,7 @@ def plot_metrics_during_training(train_acc_all: list, test_acc_all: list, loss_a
     plt.show()
 
 
-def tsne(h, color):
+def tsne(h, labels):
     """Use t-SNE to visualize the large number of features in two dimensions colored by the label."""
     z = TSNE(n_components=2).fit_transform(h.detach().cpu().numpy())
 
@@ -54,7 +55,7 @@ def tsne(h, color):
     plt.xticks([])
     plt.yticks([])
 
-    plt.scatter(z[:, 0], z[:, 1], s=70, c=color, cmap="Set2")
+    plt.scatter(z[:, 0], z[:, 1], s=70, c=labels, cmap="Set2")
     plt.show()
 
 
