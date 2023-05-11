@@ -1,4 +1,5 @@
 """This file contains all functions necessary to train the graph network."""
+import copy
 import torch
 from src.models.evaluation import Metrics
 from torch_geometric.data import Data, DataLoader, Batch
@@ -152,7 +153,7 @@ def train_model(model, data, graph_parameters, optimizer, scheduler, criterion, 
 
         # save the best model if we see improvement
         if all_metrics['val']['Macro F1 score'][-1] > best_score:
-            best_model = model
+            best_model = copy.deepcopy(model)
             count_not_improved = 0
             best_score = all_metrics['val']['Macro F1 score'][-1]
         else:

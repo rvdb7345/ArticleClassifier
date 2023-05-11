@@ -11,6 +11,7 @@ from tqdm import tqdm
 from typing import List, Dict
 import torch
 from torch_geometric.data import Data
+import itertools
 
 from src.visualization.visualize import visualize_pretraining_loss
 
@@ -86,20 +87,32 @@ class NegativeEdge:
         edge_set = set([str(data.edge_index[0, i].cpu().item()) + "," + str(data.edge_index[1, i].cpu().item()) for i in
                         range(data.edge_index.shape[1])])
 
-        redandunt_sample = torch.randint(0, num_nodes, (2, 5 * num_edges))
+#         redandunt_sample = list(itertools.combinations(list(range(num_nodes)), 2))
+
+        redandunt_sample = torch.randint(0, num_nodes, (2, 10 * num_edges))
+    
         sampled_ind = []
         sampled_edge_set = set([])
-        for i in range(5 * num_edges):
+        val_sampled_ind = []
+        val_sampled_edge_set = set([])
+        for i in range(10 * num_edges):
             node1 = redandunt_sample[0, i].cpu().item()
             node2 = redandunt_sample[1, i].cpu().item()
+#             node1 = redandunt_sample[0, i]
+#             node2 = redandunt_sample[1, i]
             edge_str = str(node1) + "," + str(node2)
-            if not edge_str in edge_set and not edge_str in sampled_edge_set and not node1 == node2:
+            if not edge_str in edge_set and not edge_str in sampled_edge_set and not node1 == node2 and not len(sampled_ind) == num_edges / 2:
                 sampled_edge_set.add(edge_str)
                 sampled_ind.append(i)
-            if len(sampled_ind) == num_edges / 2:
+            elif not edge_str in edge_set and not edge_str in val_sampled_edge_set and not edge_str in sampled_edge_set and not node1 == node2 and not len(val_sampled_ind) == num_edges / 2:
+                val_sampled_edge_set.add(edge_str)
+                val_sampled_ind.append(i)
+            elif (len(sampled_ind) == num_edges) / 2 and (len(val_sampled_ind) == num_edges / 2): 
+                print(len(sampled_ind), len(val_sampled_ind))
                 break
 
         data.negative_edge_index = redandunt_sample[:, sampled_ind]
+        data.val_negative_edge_index = redandunt_sample[:, val_sampled_ind]
 
         return data
 
@@ -128,11 +141,9 @@ def train_pretrain(model, device, loader, optimizer, batch, criterion_pretrain, 
     model.train()
 
     train_acc_accum = 0
+    val_acc_accum = 0
     train_loss_accum = 0
     batch = batch.to(device)
-
-    data_inputs.append(True)
-
     node_emb = model(*data_inputs)
 
     positive_score = torch.sum(node_emb[batch.edge_index[0, ::2]] * node_emb[batch.edge_index[1, ::2]], dim=1)
@@ -148,8 +159,15 @@ def train_pretrain(model, device, loader, optimizer, batch, criterion_pretrain, 
     acc = (torch.sum(positive_score > 0) + torch.sum(negative_score < 0)).to(torch.float32) / float(
         2 * len(positive_score))
     train_acc_accum += float(acc.detach().cpu().item())
+    
+    
+    val_positive_score = torch.sum(node_emb[batch.edge_index[0, ::2]] * node_emb[batch.edge_index[1, ::2]], dim=1)
+    val_negative_score = torch.sum(node_emb[batch.val_negative_edge_index[0]] * node_emb[batch.val_negative_edge_index[1]], dim=1)
+    val_acc = (torch.sum(val_positive_score > 0) + torch.sum(val_negative_score < 0)).to(torch.float32) / float(
+        2 * len(val_positive_score))
+    val_acc_accum += float(val_acc.detach().cpu().item())
 
-    return model, train_acc_accum / (0 + 1), train_loss_accum / (0 + 1)
+    return model, train_acc_accum / (0 + 1), train_loss_accum / (0 + 1), val_acc_accum / (0 + 1)
 
 
 def pretrain(model: torch.nn.Module,
@@ -171,6 +189,9 @@ def pretrain(model: torch.nn.Module,
 
     transform = NegativeEdge()
     transformed_data = transform(graph_data)
+    print(transformed_data)
+    data_inputs = [d for data_object in [transformed_data] for d in (data_object.x.float(), data_object.edge_index)]
+    data_inputs.append(True)
 
     # set up optimizer and criterion
     if pretrain_params['pretrain_optimizer'] == 'adam':
@@ -182,13 +203,23 @@ def pretrain(model: torch.nn.Module,
 
     train_losses = []
     train_accs = []
+    val_count = 0
+    best_val_acc = 0
     for _ in (pbar := tqdm(range(1, pretrain_params['pretrain_epochs']))):
-        model, train_acc, train_loss = train_pretrain(model, device, None, optimizer,
+        model, train_acc, train_loss, val_acc = train_pretrain(model, device, None, optimizer,
                                                       BatchAE([transformed_data]).batch[0],
                                                       criterion_pretrain, data_inputs)
         train_losses.append(train_loss)
         train_accs.append(train_acc)
-        pbar.set_description(f'Train acc: {train_acc}, Train loss: {train_loss}')
+        if not val_acc > best_val_acc:
+            val_count += 1
+        else:
+            best_val_acc = val_acc
+            val_count = 0
+            
+        if val_count > 100:
+            break
+        pbar.set_description(f'Train acc: {train_acc}, Train loss: {train_loss}, Val acc: {val_acc}')
 
     visualize_pretraining_loss(train_losses, train_accs)
 
