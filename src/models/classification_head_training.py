@@ -9,6 +9,7 @@ import numpy as np
 from tqdm import tqdm
 import lightgbm as gbm
 import xgboost
+import gc
 
 from src.data.mlsmote import get_minority_instance, MLSMOTE
 from src.general.data_classes import Experiment
@@ -47,9 +48,11 @@ def generate_minority_samples(X_train_graph_embeddings: np.ndarray,
     return X_train_graph_embeddings, y_train_graph_embeddings
 
 
+
+
 def train_lightgbm_classifiers(X_train: np.ndarray, y_train: np.ndarray,
                                X_val: np.ndarray, y_val: np.ndarray,
-                               lgbm_params: Dict[str, any], num_labels: int) -> List[gbm.LGBMClassifier]:
+                               lgbm_params: Dict[str, any], num_labels: int) -> List[xgboost.Booster]:
     """
     Trains LightGBM classifiers for each label in the dataset.
 
@@ -69,28 +72,37 @@ def train_lightgbm_classifiers(X_train: np.ndarray, y_train: np.ndarray,
 #                                                 metric_name='f1_err',
 #                                                 data_name='valid')
     
-    lgbm_params.update({'early_stopping_rounds': early_stopping_rounds})
-    clfs = []
-    for i in range(num_labels):
-        clfs.append(xgboost.XGBClassifier(**lgbm_params))
+#     lgbm_params.update({'early_stopping_rounds': early_stopping_rounds})
+#     clfs = []
+#     for i in range(num_labels):
+#         clfs.append(xgboost.XGBClassifier(**lgbm_params))
 
 #     for i in tqdm(range(num_labels)):
-#         clfs[i] = clfs[i].fit(X_train, y_train[:, i],
-#                               callbacks=[gbm.log_evaluation(period=100), gbm.early_stopping(30)],
-#                               eval_set=(X_val, y_val[:, i]))
-
+#         clfs[i] = clfs[i].fit(X_train, y_train[:, i], eval_set=[(X_val, y_val[:, i])], verbose=100)
+        
+        
+    clfs = []
     for i in tqdm(range(num_labels)):
-        clfs[i] = clfs[i].fit(X_train, y_train[:, i], eval_set=[(X_val, y_val[:, i])], verbose=100)
+        dtrain = xgboost.DMatrix(X_train, label=y_train[:, i])
+        dval = xgboost.DMatrix(X_val, label=y_val[:, i])
+        watchlist = [(dtrain, 'train'), (dval, 'eval')]
+
+        clfs.append(xgboost.train(lgbm_params, dtrain, num_boost_round=5000,
+                              evals=watchlist,
+                              early_stopping_rounds=early_stopping_rounds,
+                              verbose_eval=100))
+        
+        del dtrain, dval, watchlist
         
     return clfs
 
 
-def make_predictions(clfs: List[gbm.LGBMClassifier], X: np.ndarray, num_labels: int) -> np.ndarray:
+def make_predictions(clfs: List[xgboost.Booster], X: np.ndarray, num_labels: int) -> np.ndarray:
     """
-    Makes predictions for each LightGBM classifier on the given dataset.
+    Makes predictions for each XGBoost classifier on the given dataset.
 
     Args:
-        clfs (List[gbm.LGBMClassifier]): The trained LightGBM classifiers.
+        clfs (List[xgb.Booster]): The trained XGBoost classifiers.
         X (np.ndarray): The features of the dataset to make predictions on.
         num_labels (int): The number of labels in the dataset.
 
@@ -98,9 +110,10 @@ def make_predictions(clfs: List[gbm.LGBMClassifier], X: np.ndarray, num_labels: 
         np.ndarray: The predicted labels for the dataset.
     """
     y_pred = np.zeros((X.shape[0], num_labels))
+    dtest = xgboost.DMatrix(X)
 
     for i in tqdm(range(num_labels)):
-        y_pred[:, i] = clfs[i].predict(X)
+        y_pred[:, i] = clfs[i].predict(dtest)
 
     return y_pred
 
@@ -129,13 +142,17 @@ def train_classification_head(model: torch.nn.Module,
     # create graph embeddings
     graph_created_embeddings = model.forward(*data_inputs, return_embeddings=True)
 
-    X_train_graph_embeddings = graph_created_embeddings[data[0].train_mask].detach().cpu().numpy()
-    X_val_graph_embeddings = graph_created_embeddings[data[0].val_mask].detach().cpu().numpy()
-    X_test_graph_embeddings = graph_created_embeddings[data[0].test_mask].detach().cpu().numpy()
+    X_train_graph_embeddings = graph_created_embeddings[data[0].train_mask].detach().cpu().numpy().astype(np.float16)
+    X_val_graph_embeddings = graph_created_embeddings[data[0].val_mask].detach().cpu().numpy().astype(np.float32)
+    X_test_graph_embeddings = graph_created_embeddings[data[0].test_mask].detach().cpu().numpy().astype(np.float32)
 
-    y_train_graph_embeddings = data[0].y[data[0].train_mask].detach().cpu().numpy()
-    y_val_graph_embeddings = data[0].y[data[0].val_mask].detach().cpu().numpy()
-    y_test_graph_embeddings = data[0].y[data[0].test_mask].detach().cpu().numpy()
+    y_train_graph_embeddings = data[0].y[data[0].train_mask].detach().cpu().numpy().astype(int)
+    y_val_graph_embeddings = data[0].y[data[0].val_mask].detach().cpu().numpy().astype(int)
+    y_test_graph_embeddings = data[0].y[data[0].test_mask].detach().cpu().numpy().astype(int)
+
+    del model, data, data_inputs
+    torch.cuda.empty_cache()
+    gc.collect()
 
     # oversample minority labels
     X_train_graph_embeddings, y_train_graph_embeddings = \
@@ -164,7 +181,7 @@ def train_classification_head(model: torch.nn.Module,
                                                        'test': (y_test_pred, y_test_graph_embeddings)}.items():
         for metric_name, metric in {'f1_score': f1_score, 'recall': recall_score, 'precision': precision_score}.items():
             for averaging_type in ['macro', 'micro']:
-                score = metric(dataset_real, dataset_pred, average=averaging_type, zero_division=1)
+                score = metric(dataset_real, np.round(dataset_pred), average=averaging_type, zero_division=1)
                 print(f'{dataset_name}: {averaging_type} - {metric_name}: {score}')
                 final_clf_head_metrics[f'lgbm_{dataset_name}_{metric_name}_{averaging_type}'] = score
 
