@@ -6,6 +6,7 @@ from src.general.argument_parser import create_argument_parser
 from src.general.logger_creator import create_logger
 
 from src.optuna_optimization import graph_optimization, classification_head_optimization
+from src.run_model import run_single_model
 
 def main():
     """Main function to start the correct process as specified by the command line."""
@@ -27,14 +28,13 @@ def main():
     if args.optimize is not None:
         if args.optimize == 'graph':
             graph_optimization()
-        elif args.optimize == 'clf_head'
+        elif args.optimize == 'clf_head':
             classification_head_optimization()
         else:
             assert False, f'Optimization method: {args.optimize} not defined.'
-        
-        
+    if args.run_model:
+        run_single_model()
         
 
-        
 if __name__ == "__main__":
     main()
