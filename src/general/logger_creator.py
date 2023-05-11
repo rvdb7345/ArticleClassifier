@@ -1,4 +1,5 @@
 """This file sets the settings of the logger correctly."""
+import sys
 import logging
 from typing import Dict
 
@@ -28,7 +29,7 @@ def create_logger(verbosity_level: str) -> logging.Logger:
     file_handler.setLevel(level_map[verbosity_level])
 
     # Stream handler for writing logs to the terminal
-    stream_handler = logging.StreamHandler()
+    stream_handler = logging.StreamHandler(sys.stdout)
     stream_handler.setLevel(level_map[verbosity_level])
 
     formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')

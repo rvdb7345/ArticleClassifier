@@ -29,7 +29,7 @@ def create_argument_parser() -> argparse.ArgumentParser:
                         help=f'Set verbosity level: critical, error, warning, info, debug (default: info)')
     parser.add_argument('-m', '--model_id', type=str, default=None,
                         help=f'Optional model selection by id default: none')
-    parser.add_argument('-o', '--optimization', type=str, default='graph', choices=['clf_head', 'graph'],
+    parser.add_argument('-o', '--optimize', type=str, default=None, choices=['clf_head', 'graph'],
                     help=f'Run optimization for the graph or the classification: use "graph" or "clf_head".')
     
     return parser

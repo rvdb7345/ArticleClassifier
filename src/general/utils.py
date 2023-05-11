@@ -3,6 +3,7 @@
 import os
 import sys
 import src.general.global_variables as gv
+from typing import List
 
 sys.path.append(gv.PROJECT_PATH)
 sys.path.append("/home/jovyan/20230406_ArticleClassifier/ArticleClassifier")
@@ -19,6 +20,7 @@ def cc_path(file_path: str) -> str:
 def save_results(exp_ids: Experiment, end_metrics: dict, graph_parameters: dict, lgbm_params: dict,
                  pretrain_parameters: dict, data_parameters: dict,
                  final_clf_head_metrics: dict, model_structure_parameters: dict,
+                 labels: List[str],
                  storage_file_path: str = 'model_log.csv') -> None:
     """
     This function saves the results of a single model configuration to a CSV file in a relational database format
@@ -34,6 +36,7 @@ def save_results(exp_ids: Experiment, end_metrics: dict, graph_parameters: dict,
         data_parameters (dict): A dictionary containing data-related parameters.
         final_clf_head_metrics (dict): A dictionary containing final classification head metrics.
         model_structure_parameters (dict): A dictionary containing model structure-related parameters.
+        labels (List[str]): List of the labels.
         storage_file_path (str, optional): The path to the CSV file where the results will be stored. Defaults to 'model_log.csv'.
 
     Returns:
@@ -51,7 +54,7 @@ def save_results(exp_ids: Experiment, end_metrics: dict, graph_parameters: dict,
         'graph_train_f1_score_micro': end_metrics['train']['Micro F1 score'],
         'graph_train_precision_micro': end_metrics['train']['Micro precision'],
         'graph_train_recall_micro': end_metrics['train']['Micro recall'],
-        'graph_val_f1_score_macro': end_metrics['train']['Macro F1 score'],
+        'graph_val_f1_score_macro': end_metrics['val']['Macro F1 score'],
         'graph_val_precision_macro': end_metrics['val']['Macro precision'],
         'graph_val_recall_macro': end_metrics['val']['Macro recall'],
         'graph_val_f1_score_micro': end_metrics['val']['Micro F1 score'],
@@ -71,6 +74,9 @@ def save_results(exp_ids: Experiment, end_metrics: dict, graph_parameters: dict,
     results.update(data_parameters)
     results.update(final_clf_head_metrics)
     results.update(model_structure_parameters)
+    results.update(dict(zip(['f1_' + label for label in labels], end_metrics['test']['F1 score'])))
+    results.update(dict(zip(['pr_' + label for label in labels], end_metrics['test']['Precision'])))
+    results.update(dict(zip(['re_' + label for label in labels], end_metrics['test']['Recall'])))
 
     results_df = pd.concat([results_df, pd.Series(results).to_frame().T], ignore_index=True)
     results_df.to_csv(cc_path(f'reports/model_results/{storage_file_path}'), index=False)
