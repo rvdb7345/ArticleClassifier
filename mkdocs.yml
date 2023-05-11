@@ -6,9 +6,11 @@ theme:
 
 nav:
     - Index: index.md
-    - Welcome: welcome.md
-    - Training: training.md
+    - Setting up: project_installation.md
+    - Configuring Settings: settings.md
     - Data Preparation: preparing_data.md
+    - Training: training.md
+    - Optimization: optimization.md
 
 
 
