@@ -26,10 +26,13 @@ from gensim.models.callbacks import CallbackAny2Vec
 from transformers import BertTokenizer, BertModel
 import torch
 
+device = torch.device("cuda:0") if torch.cuda.is_available() else torch.device("cpu")
+
+
 def scibert_embed_text(text, model, tokenizer):
     """Convert text to scibert embeddings."""
     encoded_text = tokenizer.encode(text, max_length=512, truncation=True)
-    input_ids = torch.tensor(encoded_text).unsqueeze(0)  # Batch size 1
+    input_ids = torch.tensor(encoded_text).to(device).unsqueeze(0)  # Batch size 1
     outputs = model(input_ids)
     last_hidden_states = outputs[0]  # The last hidden-state is the first element of the output tuple
     return last_hidden_states
@@ -44,28 +47,32 @@ def init_embedding_df(vocab, embedding_dim):
     
 def create_vocab(df):
     """Create set of all words occurring in dataset."""
-    individual_words = list(set(' '.join([i for i in data_for_embedding['abstract']]).split()))
+    individual_words = list(set(' '.join([i for i in data_for_embedding['embedding_text']]).split()))
     return individual_words
 
 
 def scibert_to_glove(data_for_embedding, embedding_dim):
     """Use SciBERT to create GloVe like embeddings"""
-    
+
     model_version = 'scibert_scivocab_uncased'
     do_lower_case = True
-    model = BertModel.from_pretrained(model_version)
+    # model = BertModel.from_pretrained(model_version)
+    model = torch.load(cc_path(f'models/embedders/finetuned_bert_56k_20e_3lay_best_iter.pt'))
+#     model = torch.load(cc_path(f'models/baselines/paula_finetuned_bert_56k_10e_tka.pt'))
+    model = model.base_model
+
     tokenizer = BertTokenizer.from_pretrained(model_version, do_lower_case=do_lower_case)
     
     print('Initiating DataFrame for saving embedding...')
     vocab = create_vocab(data_for_embedding)
     embedded_df = init_embedding_df(vocab, embedding_dim)    
 
-    
     # create embeddings
     print('Creating embeddings for all documents...')
     embedded_docs = np.zeros((len(vocab), embedding_dim))
+
     for idx, word in tqdm(enumerate(vocab)):
-        embedded_docs[idx] = scibert_embed_text(word, model, tokenizer).mean(1).detach().numpy()
+        embedded_docs[idx] = scibert_embed_text(word, model, tokenizer).mean(1).detach().cpu().numpy()
 
     embedded_df[embedding_cols] = embedded_docs
 
@@ -109,6 +116,9 @@ if __name__ == '__main__':
     data_for_embedding = processed_df.dropna(subset=['abstract'])
     data_for_embedding.loc[:, 'labels_m'] = data_for_embedding.loc[:, 'labels_m'].fillna('')
     # data_for_embedding.loc[:, 'list_label'] = data_for_embedding.loc[:, 'labels_m'].str.split(',')
+    
+    data_for_embedding['str_keywords'] = data_for_embedding['keywords'].str.replace('[', ' ').str.replace(']', ' ').str.replace(', ', ' ').str.replace("'", '')
+    data_for_embedding['embedding_text'] = data_for_embedding['title'] + data_for_embedding['str_keywords'] + data_for_embedding['abstract']
 
     if converter == 'scibert':
         embedding_dim = 768
@@ -116,7 +126,6 @@ if __name__ == '__main__':
     elif converter == 'fasttext':
         embedding_dim = 256
         embedded_df = fasttest_to_glove(data_for_embedding, embedding_dim)
-
 
     today = date.today()
     embedded_df.to_csv(cc_path(f'data/processed/canary/word_embeddings_{converter}_{goal_embedding}_{today}.csv'), index=False, sep=' ', header=False)

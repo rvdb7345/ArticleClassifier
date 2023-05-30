@@ -10,12 +10,14 @@ from tqdm import tqdm
 import lightgbm as gbm
 import xgboost
 import gc
+import time
 
 from src.data.mlsmote import get_minority_instance, MLSMOTE
 from src.general.data_classes import Experiment
 from src.general.utils import cc_path
 from sklearn.metrics import f1_score
-
+import optuna
+device = torch.device("cuda:0") if torch.cuda.is_available() else torch.device("cpu")
 
 def f1_eval(y_pred, y_true):
     err = 1-f1_score(y_true, np.round(y_pred), average='macro')
@@ -52,7 +54,7 @@ def generate_minority_samples(X_train_graph_embeddings: np.ndarray,
 
 def train_lightgbm_classifiers(X_train: np.ndarray, y_train: np.ndarray,
                                X_val: np.ndarray, y_val: np.ndarray,
-                               lgbm_params: Dict[str, any], num_labels: int) -> List[xgboost.Booster]:
+                               lgbm_params: Dict[str, any], num_labels: int, opt_trial) -> List[xgboost.Booster]:
     """
     Trains LightGBM classifiers for each label in the dataset.
 
@@ -67,7 +69,7 @@ def train_lightgbm_classifiers(X_train: np.ndarray, y_train: np.ndarray,
     Returns:
         List[gbm.LGBMClassifier]: The trained LightGBM classifiers.
     """
-    early_stopping_rounds = 30
+    early_stopping_rounds = 75
 #     early_stop = xgboost.callback.EarlyStopping(rounds=early_stopping_rounds,
 #                                                 metric_name='f1_err',
 #                                                 data_name='valid')
@@ -80,6 +82,10 @@ def train_lightgbm_classifiers(X_train: np.ndarray, y_train: np.ndarray,
 #     for i in tqdm(range(num_labels)):
 #         clfs[i] = clfs[i].fit(X_train, y_train[:, i], eval_set=[(X_val, y_val[:, i])], verbose=100)
         
+    callbacks = []
+#     if opt_trial is not None:
+#         pruning_callback = optuna.integration.XGBoostPruningCallback(opt_trial, "eval-logloss")
+#         callbacks.append(pruning_callback)
         
     clfs = []
     for i in tqdm(range(num_labels)):
@@ -90,7 +96,8 @@ def train_lightgbm_classifiers(X_train: np.ndarray, y_train: np.ndarray,
         clfs.append(xgboost.train(lgbm_params, dtrain, num_boost_round=5000,
                               evals=watchlist,
                               early_stopping_rounds=early_stopping_rounds,
-                              verbose_eval=100))
+                              verbose_eval=100,
+                              callbacks=callbacks))
         
         del dtrain, dval, watchlist
         
@@ -113,7 +120,7 @@ def make_predictions(clfs: List[xgboost.Booster], X: np.ndarray, num_labels: int
     dtest = xgboost.DMatrix(X)
 
     for i in tqdm(range(num_labels)):
-        y_pred[:, i] = clfs[i].predict(dtest)
+        y_pred[:, i] = clfs[i].predict(dtest, iteration_range=(0, clfs[i].best_iteration))
 
     return y_pred
 
@@ -123,7 +130,8 @@ def train_classification_head(model: torch.nn.Module,
                               data_inputs: List[torch.Tensor],
                               num_minority_samples: int,
                               lgbm_params: Dict[str, any],
-                              exp_ids: Experiment) -> Dict[str, float]:
+                              exp_ids: Experiment,
+                              opt_trial) -> Dict[str, float]:
     """
     This function trains the classification head of the graph model using LightGBM, evaluates its performance,
     and saves the trained model to a file.
@@ -159,10 +167,10 @@ def train_classification_head(model: torch.nn.Module,
         generate_minority_samples(X_train_graph_embeddings, y_train_graph_embeddings, num_minority_samples)
 
     # train classifiers
-    num_labels = 52
+    num_labels = y_train_graph_embeddings.shape[1]
     clfs = train_lightgbm_classifiers(X_train_graph_embeddings, y_train_graph_embeddings,
                                 X_val_graph_embeddings, y_val_graph_embeddings,
-                                lgbm_params, num_labels)
+                                lgbm_params, num_labels, opt_trial)
 
 
     # Save the list of trained models to a file
@@ -180,6 +188,13 @@ def train_classification_head(model: torch.nn.Module,
                                                        'val': (y_val_pred, y_val_graph_embeddings),
                                                        'test': (y_test_pred, y_test_graph_embeddings)}.items():
         for metric_name, metric in {'f1_score': f1_score, 'recall': recall_score, 'precision': precision_score}.items():
+            
+            # store score per label
+            final_clf_head_metrics['lgbm_' + metric_name] = []
+            for label_idx in range(dataset_pred.shape[1]):
+                final_clf_head_metrics['lgbm_' + metric_name].append(metric(np.round(dataset_real[:, label_idx]), np.round(dataset_pred[:, label_idx]), zero_division=1))
+            
+            # store averaged metrics
             for averaging_type in ['macro', 'micro']:
                 score = metric(dataset_real, np.round(dataset_pred), average=averaging_type, zero_division=1)
                 print(f'{dataset_name}: {averaging_type} - {metric_name}: {score}')

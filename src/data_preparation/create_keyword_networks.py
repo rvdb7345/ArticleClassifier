@@ -11,16 +11,20 @@ from src.data.network_construction.keyword_network_constructor import KeywordNet
 import pickle
 
 if __name__ == '__main__':
+    dataset = 'litcovid'
+    
     loc_dict = {
-        'processed_csv': cc_path('data/processed/canary/articles_cleaned.csv')
+        # 'processed_csv': cc_path('data/processed/canary/articles_cleaned.csv'),
+        'processed_csv': cc_path('data/processed/litcovid/litcovid_articles_cleaned.csv')
     }
     data_loader = DataLoader(loc_dict)
+    
     processed_df = data_loader.load_processed_csv()
-
-    processed_df['pui'] = processed_df['pui'].astype(str)
 
     network_constructor = KeywordNetworkConstructor(processed_df)
     keyword_network = network_constructor.generate_network(weight_type='inverse_weighted')
+    
+    print(len(keyword_network))
 
-    with open(cc_path('data/processed/canary/keyword_network_weighted.pickle'), 'wb') as file:
+    with open(cc_path('data/processed/litcovid/litcovid_keyword_network_weighted.pickle'), 'wb') as file:
         pickle.dump(keyword_network, file)

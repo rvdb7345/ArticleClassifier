@@ -30,6 +30,6 @@ class KeywordNetworkConstructor(NetworkConstructor):
 
         # drop all empty keywords
         keyword_df.dropna(subset=['keywords'], inplace=True)
-        keyword_df = keyword_df[~keyword_df['keywords'].isin(['', ' ', '\n'])]
+        keyword_df = keyword_df[~keyword_df['keywords'].isin(['', ' ', '\n', '[', ']'])]
 
         return keyword_df

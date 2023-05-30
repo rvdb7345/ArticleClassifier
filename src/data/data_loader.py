@@ -102,6 +102,44 @@ class DataLoader():
             f'Cannot load xml_embeddings data as path is not given, only paths for {self.data_locs.keys()}'
 
         xml_embeddings_csv = pd.read_feather(self.data_locs['xml_embeddings'])
-        xml_embeddings_csv['pui'] = xml_embeddings_csv['pui'].astype(str)
-        
+        xml_embeddings_csv['index'] = xml_embeddings_csv['index'].astype(str)
+        xml_embeddings_csv.rename(columns={'index': 'pui'}, inplace=True)
+
         return xml_embeddings_csv
+
+    def load_train_litcovid(self):
+        assert 'train_litcovid' in self.data_locs.keys(), \
+            f'Cannot load train_litcovid data as path is not given, only paths for {self.data_locs.keys()}'
+        train_data = pd.read_csv(self.data_locs['train_litcovid'])
+        train_data['pmid'] = train_data['pmid'].astype(str)
+
+        return train_data
+    
+    
+    def load_dev_litcovid(self):
+        assert 'dev_litcovid' in self.data_locs.keys(), \
+            f'Cannot load dev_litcovid data as path is not given, only paths for {self.data_locs.keys()}'
+        val_data = pd.read_csv(self.data_locs['dev_litcovid'])
+        val_data['pmid'] = val_data['pmid'].astype(str)
+
+        return val_data
+    
+        
+    def load_test_litcovid(self):
+        assert 'test_litcovid' in self.data_locs.keys(), \
+            f'Cannot load test_litcovid data as path is not given, only paths for {self.data_locs.keys()}'
+        test_data = pd.read_csv(self.data_locs['test_litcovid'])
+        test_data['pmid'] = test_data['pmid'].astype(str)
+
+        return test_data
+    
+    
+    def load_processed_litcovid_csv(self):
+        assert 'processed_litcovid_csv' in self.data_locs.keys(), \
+            f'Cannot load processed_litcovid_csv data as path is not given, only paths for {self.data_locs.keys()}'
+        processed_csv = pd.read_csv(self.data_locs['processed_litcovid_csv'], index_col=0)
+        processed_csv['labels_m'] = processed_csv['label'].str.split(';')
+        processed_csv['pmid'] = processed_csv['pmid'].astype(str)
+        processed_csv.rename(columns={'pmid': 'pui', 'label': 'labels_m'}, inplace=True)
+
+        return processed_csv

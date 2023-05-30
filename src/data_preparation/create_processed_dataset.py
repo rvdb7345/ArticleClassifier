@@ -12,11 +12,9 @@ from src.data.data_preprocessor import DataPreprocessor
 
 if __name__ == '__main__':
     loc_dict = {
-        'train': cc_path('data/raw/canary/set_B_train_kw.csv'),
-        'val': cc_path('data/raw/canary/set_B_val_kw.csv'),
-        'test': cc_path('data/raw/canary/set_B_test_kw.csv'),
-        'xml': cc_path('data/raw/canary/original_xml_files/20210210_11422_194_1.xml'),
-        'xml_csv': cc_path('data/raw/canary/original_xml_files/all_articles_diff_labels.csv')
+        'train_litcovid': cc_path('data/raw/litcovid/BC7-LitCovid-Train.csv'),
+        'val_litcovid': cc_path('data/raw/canary/BC7-LitCovid-Dev.csv'),
+        'test_litcovid': cc_path('data/raw/canary/BC7-LitCovid-Test.csv')
     }
     data_loader = DataLoader(loc_dict)
     data_preprocessor = DataPreprocessor()

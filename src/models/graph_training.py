@@ -6,6 +6,7 @@ from torch_geometric.data import Data, DataLoader, Batch
 from torch_geometric.loader import DataLoader, ClusterLoader, NeighborLoader
 from tqdm import tqdm
 
+device = torch.device("cuda:0") if torch.cuda.is_available() else torch.device("cpu")
 
 def evaluate_metrics(model: torch.nn.Module, data: list[Data], dataset: str = 'test', show: bool = False,
                      data_type_to_use: list[str] = [], all_torch_data: dict = {}) -> dict:
@@ -40,8 +41,7 @@ def evaluate_metrics(model: torch.nn.Module, data: list[Data], dataset: str = 't
         if 'label' in data_type_to_use:
             data_inputs.append(all_torch_data['label'].edge_weight.float())
 
-        out = model(*data_inputs)
-        pred = out
+        pred = model(*data_inputs)
         metric_calculator = Metrics(pred[mask].detach().cpu().numpy(), data[0].y[mask].detach().cpu().numpy(),
                                     threshold=0.5)
         metrics = metric_calculator.retrieve_all_metrics()
@@ -115,7 +115,8 @@ def train_model(model, data, graph_parameters, optimizer, scheduler, criterion, 
     """
     # define names of what to store
     dataset_names = ['train', 'val', 'test']
-    all_metric_names = list(evaluate_metrics(model, data, dataset='train').keys())
+    all_metric_names = list(evaluate_metrics(model, data, dataset='train', show=False, data_type_to_use=data_type_to_use,
+                                   all_torch_data=all_torch_data).keys())
 
     # create storage locations
     all_metrics = construct_metric_storage(dataset_names, all_metric_names)
@@ -139,7 +140,7 @@ def train_model(model, data, graph_parameters, optimizer, scheduler, criterion, 
                                    curr_scores, data_type_to_use)
             else:
                 loss = train(model, data, optimizer, scheduler, criterion, graph_parameters['graph_optimizer'],
-                             data_type_to_use, all_torch_data)
+                             data_type_to_use, all_torch_data, pbar, epoch, curr_scores)
 
             # gather the metrics for all datasets
             all_metrics = retrieve_and_store_metrics(all_metrics, all_metric_names, dataset_names, model, data,
@@ -148,14 +149,14 @@ def train_model(model, data, graph_parameters, optimizer, scheduler, criterion, 
             loss_all.append(loss)
 
         # define text for progressbar
-        curr_scores = f"Train - F1 {all_metrics['train']['Macro F1 score'][-1]}, " \
-                      f"Val - F1 {all_metrics['val']['Macro F1 score'][-1]}"
+        curr_scores = f"Train - F1 {all_metrics['train']['Micro F1 score'][-1]}, " \
+                      f"Val - F1 {all_metrics['val']['Micro F1 score'][-1]}"
 
         # save the best model if we see improvement
-        if all_metrics['val']['Macro F1 score'][-1] > best_score:
+        if all_metrics['val']['Micro F1 score'][-1] > best_score:
             best_model = copy.deepcopy(model)
             count_not_improved = 0
-            best_score = all_metrics['val']['Macro F1 score'][-1]
+            best_score = all_metrics['val']['Micro F1 score'][-1]
         else:
             count_not_improved += 1
         
@@ -190,7 +191,9 @@ def train_batch(model, loaders, optimizer, scheduler, criterion, graph_optimizer
         # data_inputs = [batch_data.x.float(), batch_data.edge_index]
 
         if 'label' in data_type_to_use:
-            data_inputs.append(batch_data.edge_weight.float())
+            data_inputs.append(batch_data[1].edge_weight.float())
+            
+        data_inputs = [d.to(device) for d in data_inputs]
 
         if graph_optimizer == 'noamopt':
             optimizer.optimizer.zero_grad()
@@ -212,7 +215,7 @@ def train_batch(model, loaders, optimizer, scheduler, criterion, graph_optimizer
 
 
 def train(model: torch.nn.Module, data: list[Data], optimizer, scheduler, criterion, graph_optimizer, data_type_to_use,
-          all_torch_data):
+          all_torch_data, progress_bar, epoch, curr_scores):
     """
     Perform one training iteration of the model.
 
@@ -246,4 +249,7 @@ def train(model: torch.nn.Module, data: list[Data], optimizer, scheduler, criter
     loss.backward()
     optimizer.step()
     # scheduler.step(val_loss)
-    return loss.items()
+    progress_bar.set_description(
+            f"Epoch: {epoch}, {curr_scores},  Loss: {loss.item()}")
+    
+    return loss.item()

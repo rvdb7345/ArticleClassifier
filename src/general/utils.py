@@ -77,6 +77,9 @@ def save_results(exp_ids: Experiment, end_metrics: dict, graph_parameters: dict,
     results.update(dict(zip(['f1_' + label for label in labels], end_metrics['test']['F1 score'])))
     results.update(dict(zip(['pr_' + label for label in labels], end_metrics['test']['Precision'])))
     results.update(dict(zip(['re_' + label for label in labels], end_metrics['test']['Recall'])))
+    results.update(dict(zip(['f1_' + label for label in labels], end_metrics['test']['F1 score'])))
+    results.update(dict(zip(['pr_' + label for label in labels], end_metrics['test']['Precision'])))
+    results.update(dict(zip(['re_' + label for label in labels], end_metrics['test']['Recall'])))
 
     results_df = pd.concat([results_df, pd.Series(results).to_frame().T], ignore_index=True)
     results_df.to_csv(cc_path(f'reports/model_results/{storage_file_path}'), index=False)

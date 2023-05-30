@@ -27,6 +27,7 @@ class NetworkConstructor():
 
         # create individual row for each item to link on
         exploded_df = self.explode_to_single_item_per_row(self.data_df)
+        print(exploded_df['keywords'].value_counts())
 
         # create groups that should be linked
         grouped_df = exploded_df[['pui', self.link_variable]].groupby(self.link_variable)
@@ -58,5 +59,12 @@ class NetworkConstructor():
 
         # create a networkx graph from the edge list that was just constructed
         networkx_graph = nx.from_pandas_edgelist(all_links_df, source='from', target='to', edge_attr='weight')
+        
+        ids_to_check = self.data_df['pui'].tolist()
 
+        for item_id in ids_to_check:
+            if item_id not in networkx_graph.nodes:
+                # Add a new node to the graph
+                networkx_graph.add_node(item_id)
+        
         return networkx_graph

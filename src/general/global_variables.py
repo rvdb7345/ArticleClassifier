@@ -1,1 +1,16 @@
 PROJECT_PATH = "/home/jovyan/20230406_ArticleClassifier/ArticleClassifier"
+LABELS = ['human', 'mouse', 'rat', 'nonhuman', 'controlled study',
+       'animal experiment', 'animal tissue', 'animal model', 'animal cell',
+       'major clinical study', 'clinical article', 'case report',
+       'multicenter study', 'systematic review', 'meta analysis',
+       'observational study', 'pilot study', 'longitudinal study',
+       'retrospective study', 'case control study', 'cohort analysis',
+       'cross-sectional study', 'diagnostic test accuracy study',
+       'double blind procedure', 'crossover procedure',
+       'single blind procedure', 'adult', 'aged', 'middle aged', 'child',
+       'adolescent', 'young adult', 'very elderly', 'infant', 'school child',
+       'newborn', 'preschool child', 'embryo', 'fetus', 'male', 'female',
+       'human cell', 'human tissue', 'normal human', 'human experiment',
+       'phase 2 clinical trial', 'randomized controlled trial',
+       'clinical trial', 'controlled clinical trial', 'phase 3 clinical trial',
+       'phase 1 clinical trial', 'phase 4 clinical trial']

@@ -24,10 +24,10 @@ def standardise_embeddings(df: pd.DataFrame) -> pd.DataFrame:
     Returns:
         standardised embeddings
     """
+    mean_df = df[df.columns.difference(['pui'])].mean()
+    std_df = df[df.columns.difference(['pui'])].std()
     df[df.columns.difference(['pui'])] = \
-        (df[df.columns.difference(['pui'])] -
-         df[df.columns.difference(['pui'])].mean()) / \
-        df[df.columns.difference(['pui'])].std()
+        (df[df.columns.difference(['pui'])] - mean_df) / std_df
     return df
 
 
@@ -50,21 +50,24 @@ def convert_networkx_to_torch(sampled_graph: networkx.classes.graph.Graph, embed
         graph dataset in torch geometric format
     """
 
-    if embedding_type == 'general' or embedding_type == 'scibert':
+    if embedding_type == 'general' or embedding_type == 'scibert' or embedding_type == 'label_specific':
+        node_features = embedding_df.loc[embedding_df['pui'].isin(sampled_graph.nodes),
+                                         embedding_df.columns.difference(['pui'])].astype(
+            np.float16).to_numpy()
+    elif embedding_type == 'label_specific':
         node_features = embedding_df.loc[embedding_df['pui'].isin(sampled_graph.nodes),
                                          embedding_df.columns.difference(['pui'])].astype(
             np.float32).to_numpy()
-    elif embedding_type == 'label_specific':
-        node_features = embedding_df.loc[embedding_df['pui'].isin(sampled_graph.nodes),
-                                         embedding_df.columns.difference(['pui'])].to_numpy()
+#         node_features = embedding_df.loc[embedding_df['pui'].isin(sampled_graph.nodes),
+#                                          embedding_df.columns.difference(['pui'])].to_numpy()
 
-        reshaped_node_features = np.zeros((len(node_features), len(node_features[0]) * len(node_features[0][0])),
-                                          dtype=np.double)
-        for idx, embedding in enumerate(node_features):
-            reshaped_node_features[idx, :] = np.vstack(embedding).flatten()
+#         reshaped_node_features = np.zeros((len(node_features), len(node_features[0]) * len(node_features[0][0])),
+#                                           dtype=np.double)
+#         for idx, embedding in enumerate(node_features):
+#             reshaped_node_features[idx, :] = np.vstack(embedding).flatten()
 
-        node_features = (reshaped_node_features - reshaped_node_features.mean()) / (reshaped_node_features.std())
-        node_features = node_features.astype(np.double)
+#         node_features = (reshaped_node_features - reshaped_node_features.mean()) / (reshaped_node_features.std())
+#         node_features = node_features.astype(np.double)
 
         # node_features = reshaped_node_features_std.tolist()
 
@@ -126,7 +129,7 @@ def get_mask(index: list, size: int) -> torch.Tensor:
     return mask
 
 
-def gather_set_indices(subsample_size: int, total_dataset_size: int, sampled_author):
+def gather_set_indices(subsample_size: int, total_dataset_size: int, sampled_author, dataset='canary'):
     """
     Get the indices for each of the dataset
     Args:
@@ -141,24 +144,27 @@ def gather_set_indices(subsample_size: int, total_dataset_size: int, sampled_aut
     if subsample_size < total_dataset_size:
         node_label_mapping = dict(zip(sampled_author.nodes, range(len(sampled_author))))
     else:
-        with open(cc_path("data/pui_idx_mapping.json"), "r") as outfile:
+        with open(cc_path(f"data/{dataset}_pui_idx_mapping.json"), "r") as outfile:
             node_label_mapping = json.load(outfile)
+            
+    # with open(cc_path(f"data/{dataset}_pui_idx_mapping.json"), "w") as outfile:
+    #     node_label_mapping = dict(zip(sampled_author.nodes, range(len(sampled_author))))
+    #     json.dump(node_label_mapping, outfile)
 
-    with open(cc_path(f'data/train_indices.txt')) as f:
+    with open(cc_path(f'data/{dataset}_train_indices.txt')) as f:
         train_puis = f.read().splitlines()
         train_indices = list(map(node_label_mapping.get, train_puis))
-    with open(cc_path(f'data/val_indices.txt')) as f:
+    with open(cc_path(f'data/{dataset}_val_indices.txt')) as f:
         val_puis = f.read().splitlines()
         val_indices = list(map(node_label_mapping.get, val_puis))
-    with open(cc_path(f'data/test_indices.txt')) as f:
+    with open(cc_path(f'data/{dataset}_test_indices.txt')) as f:
         test_puis = f.read().splitlines()
         test_indices = list(map(node_label_mapping.get, test_puis))
-
+        
     # if downsampled, not all original puis are in our trainset, so drop those
-    if subsample_size < total_dataset_size:
-        train_indices = [idx for idx in train_indices if idx]
-        val_indices = [idx for idx in val_indices if idx]
-        test_indices = [idx for idx in test_indices if idx]
+    train_indices = [idx for idx in train_indices if idx]
+    val_indices = [idx for idx in val_indices if idx]
+    test_indices = [idx for idx in test_indices if idx]
 
     return train_indices, val_indices, test_indices, node_label_mapping
 
@@ -174,7 +180,7 @@ def drop_keyword_edges(graph_network: networkx.classes.graph.Graph,
     Returns:
         Edge-pruned network
     """
-    to_remove = [(a, b) for a, b, attrs in graph_network.edges(data=True) if attrs["weight"] < edge_weight_threshold]
+    to_remove = [(a, b) for a, b, attrs in graph_network.edges(data=True) if attrs["weight"] <= edge_weight_threshold]
     graph_network.remove_edges_from(to_remove)
 
     return graph_network

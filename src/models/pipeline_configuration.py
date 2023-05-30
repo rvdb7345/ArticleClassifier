@@ -70,7 +70,9 @@ def get_loss_fn(graph_parameters):
 def initiate_model(gnn_type, model_parameters, num_features, num_labels):
     if gnn_type == 'GCN':
         model = GCN(hidden_channels=model_parameters['hidden_channels'], num_features=num_features,
-                    num_labels=num_labels)
+                    num_labels=num_labels, num_conv_layers=model_parameters['num_conv_layers'],
+                    embedding_size=model_parameters['embedding_size'],
+                    dropout=model_parameters['dropout'])
     elif gnn_type == 'GAT':
         model = GAT(hidden_channels=model_parameters['hidden_channels'], num_features=num_features,
                     num_labels=num_labels, num_conv_layers=model_parameters['num_conv_layers'],
@@ -87,7 +89,9 @@ def initiate_model(gnn_type, model_parameters, num_features, num_labels):
                     embedding_size=model_parameters['embedding_size'])
     elif gnn_type == 'dualGCN':
         model = dualGCN(hidden_channels=model_parameters['hidden_channels'], num_features=num_features,
-                        num_labels=num_labels)
+                        num_labels=num_labels, num_conv_layers=model_parameters['num_conv_layers'],
+                        embedding_size=model_parameters['embedding_size'],
+                        dropout=model_parameters['dropout'])
     elif gnn_type == 'dualGAT':
         model = dualGAT(hidden_channels=model_parameters['hidden_channels'], num_features=num_features,
                         num_labels=num_labels, num_conv_layers=model_parameters['num_conv_layers'],

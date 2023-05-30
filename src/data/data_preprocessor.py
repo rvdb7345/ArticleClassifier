@@ -41,21 +41,22 @@ class DataPreprocessor():
             Clean column of all abstracts.
         """
         cleaned_abstracts = self.standard_text_clean_up(abstracts)
-        cleaned_abstracts = cleaned_abstracts.apply(lambda x: remove_stopwords(x))
+#         cleaned_abstracts = cleaned_abstracts.apply(lambda x: remove_stopwords(x))
 
         return cleaned_abstracts
 
-    def clean_keyword_data(self, keywords: pd.Series) -> pd.Series:
+    def clean_keyword_data(self, keywords: pd.Series, separator: str = '|') -> pd.Series:
         """
         Clean the keyword data.
 
         Args:
             keywords (pd.Series): A pandas series containing all the keywords
+            separator (str): character that separates the keywords
 
         Returns:
             Clean column of all keywords.
         """
         cleaned_keywords = self.standard_text_clean_up(keywords)
-        cleaned_keywords = cleaned_keywords.str.split('|')
+        cleaned_keywords = cleaned_keywords.str.split(separator)
 
         return cleaned_keywords

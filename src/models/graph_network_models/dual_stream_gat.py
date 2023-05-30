@@ -36,7 +36,8 @@ class dualGAT(torch.nn.Module):
         else:
             self.convs_2.append(GATv2Conv(num_features, embedding_size, heads))
 
-        self.attention = torch.nn.Linear(embedding_size * heads, 1)
+        self.merge_layer = torch.nn.Linear(embedding_size * heads * 2, embedding_size * heads)
+        
         self.linear_final_end = torch.nn.Linear(embedding_size * heads, num_labels)
 
     def forward(self, x_1, edge_index_1, x_2, edge_index_2, return_embeddings=False):
@@ -49,12 +50,8 @@ class dualGAT(torch.nn.Module):
             # Process stream 2
             x_2 = F.dropout(F.elu(self.convs_2[i](x_2, edge_index_2)), p=self.dropout, training=self.training)
 
-        # Compute attention scores for both streams
-        attn_scores_1 = F.softmax(self.attention(x_1), dim=1)
-        attn_scores_2 = F.softmax(self.attention(x_2), dim=1)
-
-        # Apply attention scores to merge the output of two models
-        x = attn_scores_1 * x_1 + attn_scores_2 * x_2
+        x_comb = torch.cat([x_1, x_2], dim=1)
+        x = self.merge_layer(x_comb)
 
         if return_embeddings:
             return x

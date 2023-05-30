@@ -1,13 +1,16 @@
 """This file contains the pipeline for training and evaluating the GCN on the data."""
 import os
 import sys
+import gc
 import random
 import logging
 import pandas as pd
 from typeguard import typechecked
 from typing import Dict, List, Tuple, Union
 
+import matplotlib.pyplot as plt
 import torch
+
 import optuna
 from torch_geometric.data import Data, DataLoader, Batch
 from torch_geometric.utils.convert import from_networkx
@@ -113,7 +116,17 @@ class_head_params = {
 
 def graph_objective(trial):
 
-
+    data_parameters = {
+        'subsample_size': 25065,
+        'total_dataset_size': 25065,
+        'data_type_to_use': ['keyword'],
+        'embedding_type': 'scibert',
+        'edge_weight_threshold': 1 / 43,
+        'num_minority_samples': 0,
+        'dataset': 'litcovid',
+        'network_availability': ['keyword']
+    }
+    
     # current model setup
     model_structure_parameters = {
         'embedding_size': trial.suggest_categorical('embedding_size', [32, 64, 128, 256]),
@@ -125,35 +138,48 @@ def graph_objective(trial):
 
     exp_ids = Experiment()
     print(exp_ids.run_id, exp_ids.now, exp_ids.time)
-    
+    all_torch_data, label_columns = get_all_data(data_parameters)
+
     # run prediction and evaluation with model configuration as specified
     metrics = run_model_configuration(exp_ids, all_torch_data, label_columns.columns.difference(['pui']).tolist(),
                                       graph_parameters, model_structure_parameters, data_parameters, pretrain_parameters,
-                                      class_head_params, num_minority_samples, use_pretrain=False, only_graph=True,
-                                     only_head=False)
+                                      class_head_params, use_pretrain=False, only_graph=True,
+                                     load_trained_model=None)
     
-    return metrics['val']['Macro F1 score']
+    return metrics['test']['Micro F1 score']
 
 def classification_head_objective(trial):
     # current model setup
     model_structure_parameters = {
         'embedding_size': 256,
-        'hidden_channels': 16,
-        'heads': 12,
+        'hidden_channels': 128,
+        'heads': 8,
         'num_conv_layers': 1,
-        'dropout': 0.1
+        'dropout': 0.2
     }
+    data_parameters = {
+        'subsample_size': 25065,
+        'total_dataset_size': 25065,
+        'data_type_to_use': ['keyword'],
+        'embedding_type': 'scibert',
+        'num_minority_samples': trial.suggest_int("num_minority_samples", 0, 10000),
+        'edge_weight_threshold': 1 / 43,
+        'dataset': 'litcovid',
+        'network_availability': ['keyword']
+    }
+    all_torch_data, label_columns = get_all_data(data_parameters)
+
     
     class_head_params = {
         "silent": 1,
-        "booster": trial.suggest_categorical("booster", ["gbtree", "dart"]),
+        "booster": trial.suggest_categorical("booster", ["gbtree"]),
         "lambda": trial.suggest_float("lambda", 1e-8, 1.0),
         "alpha": trial.suggest_float("alpha", 1e-8, 1.0),
-        "n_estimators":  trial.suggest_int("n_estimators", 50, 1000),
-        'subsample': trial.suggest_float('subsample', 0.2, 0.5),
-        'learning_rate': trial.suggest_float('learning_rate', 0.008, 0.02),
-        'max_bin': 15,
-        'colsample_bytree': trial.suggest_float('colsample_bytree', 0.2, 0.5),
+        "n_estimators":  trial.suggest_int("n_estimators", 50, 2000),
+        'subsample': trial.suggest_float('subsample', 0.2, 0.8),
+        'learning_rate': trial.suggest_float('learning_rate', 0.004, 0.02),
+        'max_bin': 63,
+        'colsample_bytree': trial.suggest_float('colsample_bytree', 0.2, 0.8),
         'objective': "binary:logistic"
     }
     
@@ -163,7 +189,7 @@ def classification_head_objective(trial):
         class_head_params.update(**{'n_jobs': -1})
 
     if class_head_params["booster"] == "gbtree" or class_head_params["booster"] == "dart":
-        class_head_params["max_depth"] = trial.suggest_int("max_depth", 1, 7)
+        class_head_params["max_depth"] = trial.suggest_int("max_depth", 1, 15)
         class_head_params["eta"] = trial.suggest_float("eta", 1e-8, 1.0)
         class_head_params["gamma"] = trial.suggest_float("gamma", 1e-8, 1.0)
         class_head_params["grow_policy"] = trial.suggest_categorical("grow_policy", ["depthwise", "lossguide"])
@@ -181,28 +207,31 @@ def classification_head_objective(trial):
     # run prediction and evaluation with model configuration as specified
     metrics = run_model_configuration(exp_ids, all_torch_data, label_columns.columns.difference(['pui']).tolist(),
                                       graph_parameters, model_structure_parameters, data_parameters, pretrain_parameters,
-                                      class_head_params, num_minority_samples, use_pretrain=False, only_graph=False,
-                                     load_trained_model='20230509113430')
+                                      class_head_params, use_pretrain=False, only_graph=False,
+                                     load_trained_model='20230527223459', opt_trial = trial)
     
-    return metrics['lgbm_val_f1_score_macro']
+    return metrics['lgbm_val_f1_score_micro']
 
 
 def threshold_objective(trial):
     data_parameters = {
-        'subsample_size': 56337,
-        'total_dataset_size': 56337,
+        'subsample_size': 25065,
+        'total_dataset_size': 25065,
         'data_type_to_use': ['keyword'],
         'embedding_type': 'scibert',
-        'edge_weight_threshold': trial.suggest_float('edge_weight_threshold', 1/200, 1/2),
+        'num_minority_samples': 0,
+         'edge_weight_threshold': 1 / trial.suggest_int('edge_weight_threshold', 2, 1000),
+        'dataset': 'litcovid',
+        'network_availability': ['keyword']
     }
-
+    
     all_torch_data, label_columns = get_all_data(data_parameters)
     
     # current model setup
     model_structure_parameters = {
         'embedding_size': 256,
         'hidden_channels': 16,
-        'heads': 12,
+        'heads': 4,
         'num_conv_layers': 1,
         'dropout': 0.1
     }
@@ -213,9 +242,50 @@ def threshold_objective(trial):
     # run prediction and evaluation with model configuration as specified
     metrics = run_model_configuration(exp_ids, all_torch_data, label_columns.columns.difference(['pui']).tolist(),
                                       graph_parameters, model_structure_parameters, data_parameters, pretrain_parameters,
-                                      class_head_params, num_minority_samples, use_pretrain=False, only_graph=True)
+                                      class_head_params, use_pretrain=False, only_graph=True)
+    plt.close()
+    del all_torch_data, label_columns
     
-    return metrics['val']['Macro F1 score']
+    return metrics['val']['Micro F1 score']
+
+def threshold_experiment(threshold):
+    print('The edge weight threshold for this run: ', threshold)
+    data_parameters = {
+        'subsample_size': 56337,
+        'total_dataset_size': 56337,
+        'data_type_to_use': ['keyword'],
+        'embedding_type': 'scibert',
+        'num_minority_samples': 0,
+         'edge_weight_threshold': threshold,
+        'dataset': 'canary',
+        'network_availability': ['keyword', 'author']
+    }
+    
+    all_torch_data, label_columns = get_all_data(data_parameters)
+    
+    # current model setup
+    model_structure_parameters = {
+        'embedding_size': 256,
+        'hidden_channels': 16,
+        'heads': 4,
+        'num_conv_layers': 1,
+        'dropout': 0.1
+    }
+
+    exp_ids = Experiment()
+    print(exp_ids.run_id, exp_ids.now, exp_ids.time)
+    
+    # run prediction and evaluation with model configuration as specified
+    metrics = run_model_configuration(exp_ids, all_torch_data, label_columns.columns.difference(['pui']).tolist(),
+                                      graph_parameters, model_structure_parameters, data_parameters, pretrain_parameters,
+                                      class_head_params, use_pretrain=False, only_graph=True)
+    plt.close()
+    del all_torch_data, label_columns
+
+    torch.cuda.empty_cache()
+    gc.collect()
+    
+    return metrics['val']['Micro F1 score']
 
 
 def graph_optimization():
@@ -244,4 +314,9 @@ if __name__ == '__main__':
 #                             graph_parameters, model_structure_parameters, data_parameters, pretrain_parameters,
 #                             class_head_params, num_minority_samples)
     
-    threshold_optimization()
+#     classification_head_optimization()
+
+    for threshold in [1/300, 1/200, 1/100, 1/80, 1/60, 1/40, 1/20, 1/10, 1/5, 1/2]:
+        threshold_experiment(threshold)
+    
+    
