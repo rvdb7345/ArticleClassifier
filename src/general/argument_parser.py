@@ -29,7 +29,11 @@ def create_argument_parser() -> argparse.ArgumentParser:
                         help=f'Set verbosity level: critical, error, warning, info, debug (default: info)')
     parser.add_argument('-m', '--model_id', type=str, default=None,
                         help=f'Optional model selection by id default: none')
-    parser.add_argument('-o', '--optimize', type=str, default=None, choices=['clf_head', 'graph'],
-                    help=f'Run optimization for the graph or the classification: use "graph" or "clf_head".')
+    parser.add_argument('--run_model', type=float, default=False, 
+                        help='Run a single model training and evaluation')
+    parser.add_argument('-o', '--optimize', type=str, default=None, choices=['clf_head', 'graph', 'threshold_experiment'],
+                        help=f'Run optimization for the graph or the classification: use "graph" or "clf_head".')
+    parser.add_argument('--pruning_threshold', type=float, default=None, 
+                        help='The threshold to prune the keyword network with')
     
     return parser

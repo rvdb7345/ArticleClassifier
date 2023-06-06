@@ -5,7 +5,7 @@ sys.path.append("/home/jovyan/20230406_ArticleClassifier/ArticleClassifier")
 from src.general.argument_parser import create_argument_parser
 from src.general.logger_creator import create_logger
 
-from src.optuna_optimization import graph_optimization, classification_head_optimization
+from src.optuna_optimization import graph_optimization, classification_head_optimization, threshold_experiment
 from src.run_model import run_single_model
 
 def main():
@@ -30,6 +30,8 @@ def main():
             graph_optimization()
         elif args.optimize == 'clf_head':
             classification_head_optimization()
+        elif args.optimize == 'threshold_experiment':
+            threshold_experiment(args.pruning_threshold)
         else:
             assert False, f'Optimization method: {args.optimize} not defined.'
     if args.run_model:

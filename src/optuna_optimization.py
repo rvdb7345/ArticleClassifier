@@ -37,8 +37,10 @@ from src.general.utils import cc_path, save_results
 from src.models.graph_training import evaluate_metrics, train_model
 
 from src.models.pipeline_configuration import get_loss_fn, get_optimizer, initiate_model
-from src.models.pretraining import  pretrain
+from src.models.pretraining import pretrain
 from src.run_model import get_all_data, evaluate_graph_model, run_model_configuration
+
+
     
     
 # Create and configure logger
@@ -254,7 +256,7 @@ def threshold_experiment(threshold):
         'subsample_size': 56337,
         'total_dataset_size': 56337,
         'data_type_to_use': ['keyword'],
-        'embedding_type': 'scibert',
+        'embedding_type': 'label_specific',
         'num_minority_samples': 0,
          'edge_weight_threshold': threshold,
         'dataset': 'canary',
@@ -282,9 +284,10 @@ def threshold_experiment(threshold):
     plt.close()
     del all_torch_data, label_columns
 
-    torch.cuda.empty_cache()
-    gc.collect()
-    
+    for i in range(20):
+        torch.cuda.empty_cache()
+        gc.collect()
+            
     return metrics['val']['Micro F1 score']
 
 
@@ -316,7 +319,7 @@ if __name__ == '__main__':
     
 #     classification_head_optimization()
 
-    for threshold in [1/300, 1/200, 1/100, 1/80, 1/60, 1/40, 1/20, 1/10, 1/5, 1/2]:
+    for threshold in [1/750, 1/500, 1/250, 1/100, 1/50, 1/30, 1/20, 1/10, 1/5, 1/2]:
         threshold_experiment(threshold)
     
     

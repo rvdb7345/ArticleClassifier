@@ -12,7 +12,9 @@ from typing import Dict, List, Tuple, Union, Optional
 import torch
 from torch_geometric.data import Data, DataLoader, Batch
 from torch_geometric.utils.convert import from_networkx
-from torch_geometric.loader import DataLoader
+
+from torch_geometric.loader import DataLoader, NeighborLoader
+
 
 sys.path.append("/home/jovyan/20230406_ArticleClassifier/ArticleClassifier")
 
@@ -33,11 +35,32 @@ from src.data.data_processing import standardise_embeddings, convert_networkx_to
 from src.visualization.visualize import plot_metrics_during_training, plot_performance_per_label
 from src.general.utils import cc_path, save_results
 
-from src.models.graph_training import evaluate_metrics, train_model
+from src.models.graph_training import evaluate_metrics, train_model, evaluate_metrics_batch
 
 from src.models.pipeline_configuration import get_loss_fn, get_optimizer, initiate_model
 from src.models.pretraining import  pretrain
  
+    
+def wipe_memory(optimizer): # DOES WORK
+    _optimizer_to(torch.device('cpu'), optimizer)
+    del optimizer
+    gc.collect()
+    torch.cuda.empty_cache()
+
+def _optimizer_to(device, optimizer):
+    for param in optimizer.state.values():
+        # Not sure there are any global tensors in the state dict
+        if isinstance(param, torch.Tensor):
+            param.data = param.data.to(device)
+            if param._grad is not None:
+                param._grad.data = param._grad.data.to(device)
+        elif isinstance(param, dict):
+            for subparam in param.values():
+                if isinstance(subparam, torch.Tensor):
+                    subparam.data = subparam.data.to(device)
+                    if subparam._grad is not None:
+                        subparam._grad.data = subparam._grad.data.to(device)
+                        
 # Create and configure logger
 logging.basicConfig(filename="newfile.log",
                     format='%(asctime)s %(message)s',
@@ -267,7 +290,8 @@ def evaluate_graph_model(model: torch.nn.Module,
                          gnn_type: str,
                          loss_all: List[float],
                          exp_ids: Experiment,
-                         labels: List) -> Dict[str, Dict[str, float]]:
+                         labels: List,
+                         use_batches: bool = False) -> Dict[str, Dict[str, float]]:
     """
     Evaluate the graph model on different datasets and visualize the performance.
 
@@ -303,7 +327,19 @@ def evaluate_graph_model(model: torch.nn.Module,
 
     end_metrics = {}
     for dataset_name in ['train', 'val', 'test']:
-        end_metrics[dataset_name] = evaluate_metrics(model, data, dataset=dataset_name, show=True)
+        if use_batches:
+            if dataset_name == 'train':
+                input_nodes= data[0].train_mask.cpu()
+            if dataset_name == 'val':
+                input_nodes= data[0].val_mask.cpu()
+            if dataset_name == 'test':
+                input_nodes= data[0].test_mask.cpu()
+            
+            
+            loaders = [NeighborLoader(d, num_neighbors=[-1], batch_size=128, input_nodes=input_nodes) for d in data]
+            end_metrics[dataset_name] = evaluate_metrics_batch(model, data, dataset=dataset_name, show=True, loaders=loaders, use_batches=use_batches)
+        else:
+            end_metrics[dataset_name] = evaluate_metrics(model, data, dataset=dataset_name, show=True)
 
     for metric in ['F1 score', "Precision", 'Recall']:
         if not 'Micro' in metric and not 'Macro' in metric:
@@ -388,15 +424,17 @@ def run_model_configuration(exp_ids: Experiment,
 
         logger.info('Evaluating model...')
         end_metrics = evaluate_graph_model(best_model, data, all_metrics, graph_parameters['gnn_type'], loss_all, exp_ids,
-                                           labels)
+                                           labels, use_batches)
 
         # return the results already if we only want the graph
         if only_graph:
             save_results(exp_ids, end_metrics, graph_parameters, {}, pretrain_parameters, data_parameters,
                  {}, model_structure_parameters, labels=labels, storage_file_path='model_log.csv')
-            del model, best_model, data, all_torch_data
+            del model, best_model, data, all_torch_data, 
             torch.cuda.empty_cache()
             gc.collect()
+            wipe_memory(optimizer)
+    
             return end_metrics
     else:
         logger.info(f'Using model from run id: {load_trained_model}')

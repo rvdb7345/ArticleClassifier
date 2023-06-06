@@ -1,6 +1,7 @@
 """This file contains all functions necessary to train the graph network."""
 import copy
 import torch
+import numpy as np
 from src.models.evaluation import Metrics
 from torch_geometric.data import Data, DataLoader, Batch
 from torch_geometric.loader import DataLoader, ClusterLoader, NeighborLoader
@@ -48,8 +49,63 @@ def evaluate_metrics(model: torch.nn.Module, data: list[Data], dataset: str = 't
 
         if show:
             print('The metrics: ', metrics)
+            
+    del data_inputs, pred, mask
 
     return metrics
+
+def evaluate_metrics_batch(model: torch.nn.Module, data: list[Data], dataset: str = 'test', show: bool = False,
+                     data_type_to_use: list[str] = [], all_torch_data: dict = {}, loaders = None, use_batches: bool = False) -> dict:
+    """
+    Calculate the different metrics for the specified dataset.
+
+    Args:
+        data_type_to_use (list[list]): data types to use
+        all_torch_data (dict): dict with all data to use
+        model (torch.nn.Module): The initiated model
+        data (Data): The Torch dataset
+        dataset (str): The dataset to specify the metrics for
+        show (bool): print the results or not
+
+    Returns:
+        Dictionary with the metrics
+    """
+    # select for which set to calculate the metrics
+
+    model.eval()
+    current_sample = 0
+    with torch.no_grad():
+
+        test_predictions = np.zeros((len(data[0].y), len(data[0].y[0])))
+        test_real_labels = np.zeros((len(data[0].y), len(data[0].y[0])))
+        
+        for batch_data in loaders[0]:
+            data_inputs = [batch_data.x.float(), batch_data.edge_index]
+
+            pred = model(*data_inputs)
+
+            # we select the first node predictions as they are the centre nodes selected for the batch
+            pred_cpu = np.round(pred[:batch_data.batch_size].data.cpu().numpy())
+            labels_cpu = batch_data.y[:batch_data.batch_size].data.cpu().numpy()            
+
+    #             test_score += f1_score(labels_cpu, pred_cpu, average='macro', zero_division=0)
+            test_predictions[current_sample: current_sample + pred_cpu.shape[0], :] = pred_cpu
+            test_real_labels[current_sample: current_sample + pred_cpu.shape[0], :] = labels_cpu
+            
+            current_sample += pred_cpu.shape[0]
+            
+            
+        metric_calculator = Metrics(test_predictions, test_real_labels,
+                                    threshold=0.5)
+        metrics = metric_calculator.retrieve_all_metrics()
+
+        if show:
+            print('The metrics: ', metrics)
+            
+    del data_inputs, pred
+
+    return metrics
+
 
 
 def construct_metric_storage(dataset_names: list[str], all_metric_names: list[str]):
@@ -70,7 +126,7 @@ def construct_metric_storage(dataset_names: list[str], all_metric_names: list[st
 
 
 def retrieve_and_store_metrics(all_metrics: dict, all_metric_names: list[str], dataset_names: list[str], model, data,
-                               data_type_to_use: list[str] = [], all_torch_data: dict = {}):
+                               data_type_to_use: list[str] = [], all_torch_data: dict = {}, loaders=None, use_batches=False):
     """
 
     Args:
@@ -86,8 +142,21 @@ def retrieve_and_store_metrics(all_metrics: dict, all_metric_names: list[str], d
         updated metric storage
     """
     for dataset_name in dataset_names:
-        metrics = evaluate_metrics(model, data, dataset=dataset_name, show=False, data_type_to_use=data_type_to_use,
-                                   all_torch_data=all_torch_data)
+        if use_batches:
+            # we make sure the dataloader only loads the nodes from the correct set
+            if dataset_name == 'train':
+                input_nodes= data[0].train_mask.cpu()
+            if dataset_name == 'val':
+                input_nodes= data[0].val_mask.cpu()
+            if dataset_name == 'test':
+                input_nodes= data[0].test_mask.cpu()
+                
+            loaders = [NeighborLoader(d, num_neighbors=[-1], batch_size=128, shuffle=False, input_nodes=input_nodes) for d in data]
+            metrics = evaluate_metrics_batch(model, data, dataset=dataset_name, show=False, data_type_to_use=data_type_to_use,
+                                       all_torch_data=all_torch_data, loaders=loaders)
+        else:
+            metrics = evaluate_metrics(model, data, dataset=dataset_name, show=False, data_type_to_use=data_type_to_use,
+                                       all_torch_data=all_torch_data)
 
         for metric in all_metric_names:
             all_metrics[dataset_name][metric].append(metrics[metric])
@@ -115,8 +184,9 @@ def train_model(model, data, graph_parameters, optimizer, scheduler, criterion, 
     """
     # define names of what to store
     dataset_names = ['train', 'val', 'test']
-    all_metric_names = list(evaluate_metrics(model, data, dataset='train', show=False, data_type_to_use=data_type_to_use,
-                                   all_torch_data=all_torch_data).keys())
+
+    
+    all_metric_names = ['Precision', 'Recall', 'F1 score', 'Macro precision', 'Macro recall', 'Macro F1 score', 'Micro precision', 'Micro recall', 'Micro F1 score']
 
     # create storage locations
     all_metrics = construct_metric_storage(dataset_names, all_metric_names)
@@ -124,7 +194,9 @@ def train_model(model, data, graph_parameters, optimizer, scheduler, criterion, 
 
     # define loaders if using batches
     if use_batches:
-        loaders = [NeighborLoader(d, num_neighbors=[30] * 2, batch_size=128) for d in data]
+        loaders = [NeighborLoader(d, num_neighbors=[-1], batch_size=128, shuffle=False, input_nodes=d.train_mask.cpu()) for d in data]
+    else:
+        loaders = None
 
     # go over each epoch
     best_score = 0
@@ -144,7 +216,7 @@ def train_model(model, data, graph_parameters, optimizer, scheduler, criterion, 
 
             # gather the metrics for all datasets
             all_metrics = retrieve_and_store_metrics(all_metrics, all_metric_names, dataset_names, model, data,
-                                                     data_type_to_use, all_torch_data)
+                                                     data_type_to_use, all_torch_data, loaders, use_batches)
             
             loss_all.append(loss)
 
@@ -201,7 +273,7 @@ def train_batch(model, loaders, optimizer, scheduler, criterion, graph_optimizer
             optimizer.zero_grad()
 
         out = model(*data_inputs)
-        loss = criterion(out[batch_data[0].train_mask], batch_data[0].y[batch_data[0].train_mask])
+        loss = criterion(out[:batch_data[0].batch_size], batch_data[0].y[:batch_data[0].batch_size])
 
         loss.backward()
         optimizer.step()
@@ -210,6 +282,8 @@ def train_batch(model, loaders, optimizer, scheduler, criterion, graph_optimizer
         num_batches += 1
         progress_bar.set_description(
             f"Epoch: {epoch}, {curr_scores}, Batch: {num_batches}/{len(loaders[0])}, Loss: {total_loss / num_batches:.4f}")
+        
+    del data_inputs, loss
 
     return total_loss / num_batches
 
