@@ -1,15 +1,8 @@
 import os
 import sys
-import argparse
-import math
 import numpy as np
-import timeit
 import torch
-import torch.utils.data as data_utils
-import torch.nn as nn
-import torch.nn.functional as F
 from tqdm import tqdm
-from sklearn.model_selection import train_test_split
 from sklearn.metrics import f1_score, recall_score, precision_score
 import copy
 sys.path.append("/home/jovyan/20230406_ArticleClassifier/ArticleClassifier")
@@ -21,11 +14,9 @@ sys.path.append(gv.PROJECT_PATH)
 sys.path.append(
     os.path.abspath(os.path.join(os.path.dirname('data_loader.py'), os.path.pardir)))
 
-from src.data.data_loader import DataLoader as OwnDataLoader
 from src.data_processor.xml_model import Hybrid_XML
 from src.data_preparation.bert_utils import generate_canary_embedding_text, generate_litcovid_embedding_text, \
     load_canary_data, load_litcovid_data, generate_dataloader_objects
-from torch.utils.data import TensorDataset, DataLoader, RandomSampler, SequentialSampler
 from transformers import BertTokenizer, BertModel, AutoTokenizer
 
 
@@ -37,7 +28,7 @@ MAX_LEN = 512
 def load_bert_model(model_path):
     do_lower_case = True
     if model_path == 'scibert_scivocab_uncased':
-        model = BertModel.from_pretrained(model_version)
+        model = BertModel.from_pretrained(model_path)
     else:
         model = torch.load(cc_path(model_path))
 
@@ -90,7 +81,7 @@ def train_epoch(model, criterion, dataloader, dataset, pbar_description, optimiz
 
     return train_loss, train_score
 
-def evaluation(model, dataloader, dataset, pbar_description, optimizer, num_labels, batch_size):
+def evaluation(model, dataloader, dataset, criterion, num_labels, batch_size):
         test_loss = 0
         test_predictions = np.zeros((len(dataset), num_labels))
         test_real_labels = np.zeros((len(dataset), num_labels))
@@ -119,20 +110,22 @@ def evaluation(model, dataloader, dataset, pbar_description, optimizer, num_labe
         return test_score, test_loss, test_predictions, test_real_labels
 
 
-def train_model(model, criterion, dataloaders, datasets, optimizer, num_labels, batch_size):
+def train_model(model, criterion, dataloaders, datasets, optimizer, num_labels, batch_size, epoch):
     best_val_score = 0
     not_improved = 0
 
     val_loss = 0
-    val_score  = 0
+    val_score = 0
+    train_loss = 0
+    train_score = 0
 
     for ep in range(1, epoch + 1):
 
         pbar_description = f"epoch {ep}, train_loss = {train_loss:.4f}, test_loss = {val_loss:.4f}, train_f1 = {train_score:.4f}, val_f1 = {val_score:.4f}"
 
-        train_loss, train_score, batch_num = train_epoch(model,criterion, dataloaders['train'], datasets['train'], pbar_description, optimizer, num_labels, batch_size)
+        train_loss, train_score = train_epoch(model,criterion, dataloaders['train'], datasets['train'], pbar_description, optimizer, num_labels, batch_size)
 
-        val_score, val_loss, _, _ = evaluation(model, dataloaders['val'], datasets['val'], pbar_description, optimizer, num_labels, batch_size)
+        val_score, val_loss, _, _ = evaluation(model, dataloaders['val'], datasets['val'], criterion, num_labels, batch_size)
 
         print('The current test score: ', val_score)
         if val_score > best_val_score:
@@ -171,7 +164,7 @@ def train_xml_embedder(dataset_to_run):
     if dataset_to_run == 'canary':
         model_path = f'models/embedders/finetuned_bert_56k_20e_3lay_best_iter.pt'
         label_emb_path = ''
-        label_columns, processed_df, puis = load_all_canary_data()
+        label_columns, processed_df, puis = load_canary_data()
         processed_df = generate_canary_embedding_text(processed_df)
 
         num_labels = 52
@@ -179,7 +172,7 @@ def train_xml_embedder(dataset_to_run):
     elif dataset_to_run == 'litcovid':
         model_path = f'models/embedders/litcovid_pretrained_best_iter_meta_stopwords.pt'
         label_emb_path = f'notebooks/litcovid_label_embedding_window3.txt'
-        label_columns, processed_df, puis = load_all_litcovid_data()
+        label_columns, processed_df, puis = load_litcovid_data()
         processed_df = generate_litcovid_embedding_text(processed_df)
 
         num_labels = 7
@@ -201,9 +194,9 @@ def train_xml_embedder(dataset_to_run):
     optimizer = torch.optim.AdamW(filter(lambda p: p.requires_grad, model.parameters()), lr=0.00001, weight_decay=1e-4)
     criterion = torch.nn.BCELoss(reduction='mean')
 
-    best_model = train_model(model, criterion, dataloaders, datasets, optimizer, num_labels, batch_size)
+    best_model = train_model(model, criterion, dataloaders, datasets, optimizer, num_labels, batch_size, epoch=20)
     test_score, test_loss, test_predictions, test_real_labels = evaluation(model, dataloaders['test'], datasets['test'],
-                                                                           pbar_description, optimizer, num_labels,
+                                                                           criterion, num_labels,
                                                                            batch_size)
 
     get_end_metrics(test_real_labels, test_predictions)

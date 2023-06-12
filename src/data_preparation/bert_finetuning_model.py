@@ -1,4 +1,6 @@
 import torch
+from transformers import BertModel
+
 class BertClassifier(torch.nn.Module):
     """
         Bert Model for classification Tasks.

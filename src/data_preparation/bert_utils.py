@@ -1,6 +1,21 @@
+import sys
+import torch
+import numpy as np
+from tqdm import tqdm
+sys.path.append("/home/jovyan/20230406_ArticleClassifier/ArticleClassifier")
+
+import src.general.global_variables as gv
+from src.general.utils import cc_path
+from src.data.data_loader import DataLoader as OwnDataLoader
+from torch.utils.data import TensorDataset, DataLoader, RandomSampler, SequentialSampler
+
+sys.path.append(gv.PROJECT_PATH)
+device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+
 class BERTPreprocessor():
     def __init__(self, tokenizer):
         self.tokenizer = tokenizer
+        self.MAX_LEN = 512
 
 
     def preprocessing_for_bert(self, data):
@@ -27,7 +42,7 @@ class BERTPreprocessor():
             encoded_sent = self.tokenizer.encode_plus(
                 text=sent,  # preprocess sentence
                 add_special_tokens=True,  # Add `[CLS]` and `[SEP]`
-                max_length=MAX_LEN,  # Max length to truncate/pad
+                max_length=self.MAX_LEN,  # Max length to truncate/pad
                 pad_to_max_length=True,  # pad sentence to max length
                 return_attention_mask=True,  # Return attention mask
                 truncation=True
@@ -55,7 +70,7 @@ def load_canary_data():
         'author_network': cc_path('data/processed/canary/author_network.pickle'),
         'label_network': cc_path('data/processed/canary/label_network_weighted.pickle')
     }
-    data_loader = DataLoader(loc_dict)
+    data_loader = OwnDataLoader(loc_dict)
     processed_df = data_loader.load_processed_csv()
     processed_df.dropna(subset=['abstract'], inplace=True)
 
@@ -87,7 +102,7 @@ def load_litcovid_data():
         'xml_embeddings': cc_path('data/processed/litcovid/litcovid_embeddings_xml_20230518_68.ftr'),
         'label_network': cc_path('data/processed/litcovid/litcovid_label_network_weighted.pickle')
     }
-    data_loader = DataLoader(loc_dict)
+    data_loader = OwnDataLoader(loc_dict)
     processed_df = data_loader.load_processed_csv()
     processed_df.dropna(subset=['abstract'], inplace=True)
 

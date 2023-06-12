@@ -3,6 +3,7 @@ import pandas as pd
 import numpy as np
 import gc
 from torch.utils.data import TensorDataset, DataLoader, RandomSampler, SequentialSampler
+from transformers import AutoTokenizer
 
 import sys
 
@@ -42,7 +43,8 @@ def inference_xml_embedder(dataset_to_run):
 
     puis_to_embed = np.array(full_set.loc[:, 'pui'].to_list(), dtype=int)
 
-    bertprocessor = BERTPreprocessor()
+    tokenizer = AutoTokenizer.from_pretrained('allenai/scibert_scivocab_uncased')
+    bertprocessor = BERTPreprocessor(tokenizer=tokenizer)
 
     final_set, final_masks = bertprocessor.preprocessing_for_bert(full_set.loc[:, 'embedding_text'])
     final_data = TensorDataset(final_set.to(device), final_masks.to(device),

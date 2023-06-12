@@ -1,21 +1,15 @@
 '''Code based on: https://www.kaggle.com/code/vpkprasanna/bert-model-with-0-845-accuracy/notebook'''
 
 import torch
-import random
 import time
 import random
-import copy
-from sklearn.metrics import f1_score
 
 import copy
 from sklearn.metrics import f1_score
 import numpy as np
 from sklearn.metrics import accuracy_score, precision_recall_fscore_support
-from transformers import BertTokenizer, BertForSequenceClassification, BertConfig
-from transformers import Trainer, TrainingArguments
 from transformers import BertTokenizer, BertModel
 from transformers import AdamW, get_linear_schedule_with_warmup
-import json
 
 import sys
 import os
@@ -25,7 +19,6 @@ sys.path.append("/home/jovyan/20230406_ArticleClassifier/ArticleClassifier")
 import src.general.global_variables as gv
 sys.path.append(
     os.path.abspath(os.path.join(os.path.dirname('data_loader.py'), os.path.pardir)))
-from src.data.data_loader import DataLoader
 from src.general.utils import cc_path
 from src.data_preparation.bert_finetuning_model import BertClassifier
 from src.data_preparation.bert_utils import BERTPreprocessor
@@ -77,7 +70,7 @@ def set_seed(seed_value=42):
     torch.cuda.manual_seed_all(seed_value)
 
 
-def train(model, dataloaders, loss_fn, num_labels, epochs=4, evaluation=False, dataset_name='litcovid'):
+def train(model, dataloaders, optimizer, scheduler, loss_fn, num_labels, epochs=4, evaluation=False, dataset_name='litcovid'):
     """Train the BertClassifier model.
     """
     # Start training loop
@@ -258,7 +251,7 @@ def scibert_finetuning(dataset_to_run):
 
     set_seed(42)  # Set seed for reproducibility
     bert_classifier, optimizer, loss_fn, scheduler = initialize_model(dataloaders, epochs=15)
-    best_model = train(bert_classifier, dataloaders, loss_fn, num_labels,
+    best_model = train(bert_classifier, dataloaders, optimizer, scheduler, loss_fn, num_labels,
                        epochs=15, evaluation=True, dataset_name=dataset_to_run)
 
     torch.save(best_model.bert, cc_path(f'models/embedders/litcovid_finetuned_bert_20e_3lay_meta.pt'))
