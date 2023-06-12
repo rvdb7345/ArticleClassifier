@@ -23,6 +23,8 @@ sys.path.append(
 
 from src.data.data_loader import DataLoader as OwnDataLoader
 from src.data_processor.xml_model import Hybrid_XML
+from src.data_preparation.bert_utils import generate_canary_embedding_text, generate_litcovid_embedding_text, \
+    load_canary_data, load_litcovid_data, generate_dataloader_objects
 from torch.utils.data import TensorDataset, DataLoader, RandomSampler, SequentialSampler
 from transformers import BertTokenizer, BertModel, AutoTokenizer
 
@@ -31,50 +33,6 @@ device = torch.device("cuda:0") if torch.cuda.is_available() else torch.device("
 
 MAX_LEN = 512
 
-
-class BERTPreprocessor():
-    def __init__(self, tokenizer):
-        self.tokenizer = tokenizer
-
-
-    def preprocessing_for_bert(self, data):
-        """Perform required preprocessing steps for pretrained BERT.
-        @param    data (np.array): Array of texts to be processed.
-        @return   input_ids (torch.Tensor): Tensor of token ids to be fed to a model.
-        @return   attention_masks (torch.Tensor): Tensor of indices specifying which
-                      tokens should be attended to by the model.
-        """
-        # create empty lists to store outputs
-        input_ids = []
-        attention_masks = []
-
-        # for every sentence...
-
-        for sent in tqdm(data):
-            # 'encode_plus will':
-            # (1) Tokenize the sentence
-            # (2) Add the `[CLS]` and `[SEP]` token to the start and end
-            # (3) Truncate/Pad sentence to max length
-            # (4) Map tokens to their IDs
-            # (5) Create attention mask
-            # (6) Return a dictionary of outputs
-            encoded_sent = self.tokenizer.encode_plus(
-                text=sent,  # preprocess sentence
-                add_special_tokens=True,  # Add `[CLS]` and `[SEP]`
-                max_length=MAX_LEN,  # Max length to truncate/pad
-                pad_to_max_length=True,  # pad sentence to max length
-                return_attention_mask=True,  # Return attention mask
-                truncation=True
-            )
-            # Add the outputs to the lists
-            input_ids.append(encoded_sent.get('input_ids'))
-            attention_masks.append(encoded_sent.get('attention_mask'))
-
-        # convert lists to tensors
-        input_ids = torch.tensor(input_ids)
-        attention_masks = torch.tensor(attention_masks)
-
-        return input_ids, attention_masks
 
 def load_bert_model(model_path):
     do_lower_case = True
@@ -85,100 +43,6 @@ def load_bert_model(model_path):
 
     return model.base_model
 
-
-def load_all_canary_data():
-    # load all the data
-    loc_dict = {
-        'processed_csv': cc_path('data/processed/canary/articles_cleaned.csv'),
-        'abstract_embeddings': cc_path('data/processed/canary/embeddings_fasttext_20230410.csv'),
-        'keyword_network': cc_path('data/processed/canary/keyword_network_weighted.pickle'),
-        'author_network': cc_path('data/processed/canary/author_network.pickle')
-    }
-    data_loader = OwnDataLoader(loc_dict)
-    processed_df = data_loader.load_processed_csv()
-
-    processed_df['pui'] = processed_df['pui'].astype(str)
-
-    label_columns = processed_df.loc[:, ~processed_df.columns.isin(
-        ['file_name', 'title', 'keywords', 'abstract', 'abstract_2', 'authors', 'organization', 'chemicals',
-         'num_refs', 'date-delivered', 'labels_m', 'labels_a'])]
-    label_columns.loc[:, label_columns.columns.difference(['pui'])] = label_columns.loc[
-                                                                      :, label_columns.columns.difference(['pui'])].astype(str)
-
-    with open(cc_path(f'data/train_indices.txt')) as f:
-        train_puis = f.read().splitlines()
-    with open(cc_path(f'data/val_indices.txt')) as f:
-        val_puis = f.read().splitlines()
-    with open(cc_path(f'data/test_indices.txt')) as f:
-        test_puis = f.read().splitlines()
-
-    return processed_df, train_puis, val_puis, test_puis
-
-def generate_canary_embedding_text(df):
-    df['str_keywords'] = df['keywords'].str.replace('[', ' ').str.replace(']', ' ').str.replace(', ', ' ').str.replace("'", '')
-    df['embedding_text'] = df['title'] + df['str_keywords'] + df['abstract']
-
-    return df
-
-
-def load_all_litcovid_data():
-    loc_dict = {
-        'processed_csv': cc_path('data/processed/litcovid/litcovid_articles_cleaned.csv'),
-        'scibert_embeddings': cc_path('data/processed/litcovid/litcovid_embeddings_scibert_finetuned_20230529_meta_stopwords.csv'),
-        'keyword_network': cc_path('data/processed/litcovid/litcovid_keyword_network_weighted.pickle'),
-        'xml_embeddings': cc_path('data/processed/litcovid/litcovid_embeddings_xml_20230518_68.ftr'),
-        'label_network': cc_path('data/processed/litcovid/litcovid_label_network_weighted.pickle')
-    }
-    data_loader = OwnDataLoader(loc_dict)
-    processed_df = data_loader.load_processed_csv()
-    processed_df.dropna(subset=['abstract'], inplace=True)
-
-    label_columns = processed_df.loc[:, ~processed_df.columns.isin(
-        ['file_name', 'title', 'keywords', 'abstract', 'abstract_2', 'authors', 'organization', 'chemicals',
-         'num_refs', 'date-delivered', 'labels_m', 'labels_a', 'journal', 'pub_type', 'doi', 'label', 'label_m', 'list_label'])]
-    label_columns.loc[:, label_columns.columns.difference(['pui'])] = label_columns.loc[:,
-        label_columns.columns.difference(['pui'])].astype(int)
-
-    with open(cc_path(f'data/litcovid_train_indices.txt')) as f:
-        train_puis = f.read().splitlines()
-    with open(cc_path(f'data/litcovid_val_indices.txt')) as f:
-        val_puis = f.read().splitlines()
-    with open(cc_path(f'data/litcovid_test_indices.txt')) as f:
-        test_puis = f.read().splitlines()
-
-    return processed_df, train_puis, val_puis, test_puis
-
-def generate_litcovid_embedding_text(df):
-
-    df['str_keywords'] = df['keywords'].str.replace('[', ' ').str.replace(']', ' ').str.replace(', ', ' ').str.replace("'", '')
-    df['embedding_text'] = df['title'] + " " + df['journal'] + " " + df['pub_type'].str.replace(';', ' ') + " " + df['str_keywords'] + df['abstract']
-    return df
-
-
-def generate_dataloader_objects(tokenizer, label_columns, processed_df, train_puis, val_puis, test_puis, batch_size=32):
-    bert_preprocessor = BERTPreprocessor(tokenizer)
-
-    train_set, train_masks = bert_preprocessor.preprocessing_for_bert(processed_df.loc[processed_df.pui.isin(train_puis), 'embedding_text'])
-    val_set, val_masks = bert_preprocessor.preprocessing_for_bert(processed_df.loc[processed_df.pui.isin(val_puis), 'embedding_text'])
-    test_set, test_masks = bert_preprocessor.preprocessing_for_bert(processed_df.loc[processed_df.pui.isin(test_puis), 'embedding_text'])
-
-    train_labels = torch.tensor(label_columns.loc[processed_df.pui.isin(train_puis), label_columns.columns.difference(['pui'])].to_numpy(dtype=np.int8))
-    val_labels = torch.tensor(label_columns.loc[processed_df.pui.isin(val_puis), label_columns.columns.difference(['pui'])].to_numpy(dtype=np.int8))
-    test_labels = torch.tensor(label_columns.loc[processed_df.pui.isin(test_puis), label_columns.columns.difference(['pui'])].to_numpy(dtype=np.int8))
-
-    train_data = TensorDataset(train_set.to(device), train_masks.to(device), train_labels.to(device))
-    train_sampler = RandomSampler(train_data)
-    train_dataloader = DataLoader(train_data, sampler=train_sampler, batch_size=batch_size)
-
-    val_data = TensorDataset(val_set.to(device), val_masks.to(device), val_labels.to(device))
-    val_sampler = RandomSampler(val_data)
-    val_dataloader = DataLoader(val_data, sampler=val_sampler, batch_size=batch_size)
-
-    test_data = TensorDataset(test_set.to(device), test_masks.to(device), test_labels.to(device))
-    test_sampler = RandomSampler(test_data)
-    test_dataloader = DataLoader(test_data, sampler=test_sampler, batch_size=batch_size)
-
-    return {'train': train_dataloader, 'val': val_dataloader, 'test': test_dataloader}, {'train': train_set, 'val': val_set, 'test': test_set}
 
 def get_label_embeddings(path, embedding_size):
     label_emb = np.zeros(embedding_size)
@@ -307,7 +171,7 @@ def train_xml_embedder(dataset_to_run):
     if dataset_to_run == 'canary':
         model_path = f'models/embedders/finetuned_bert_56k_20e_3lay_best_iter.pt'
         label_emb_path = ''
-        processed_df, train_puis, val_puis, test_puis = load_all_canary_data()
+        label_columns, processed_df, puis = load_all_canary_data()
         processed_df = generate_canary_embedding_text(processed_df)
 
         num_labels = 52
@@ -315,7 +179,7 @@ def train_xml_embedder(dataset_to_run):
     elif dataset_to_run == 'litcovid':
         model_path = f'models/embedders/litcovid_pretrained_best_iter_meta_stopwords.pt'
         label_emb_path = f'notebooks/litcovid_label_embedding_window3.txt'
-        processed_df, train_puis, val_puis, test_puis = load_all_litcovid_data()
+        label_columns, processed_df, puis = load_all_litcovid_data()
         processed_df = generate_litcovid_embedding_text(processed_df)
 
         num_labels = 7
@@ -328,7 +192,7 @@ def train_xml_embedder(dataset_to_run):
     BERTmodel = load_bert_model(model_path)
     tokenizer = AutoTokenizer.from_pretrained('allenai/scibert_scivocab_uncased')
 
-    dataloaders, datasets = generate_dataloader_objects(tokenizer, label_columns, processed_df, train_puis, val_puis, test_puis,
+    dataloaders, datasets = generate_dataloader_objects(tokenizer, label_columns, processed_df, puis,
                                                         batch_size=batch_size)
     label_emb = get_label_embeddings(label_emb_path, embedding_size=embedding_size)
 
