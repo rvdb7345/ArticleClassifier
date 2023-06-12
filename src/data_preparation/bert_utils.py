@@ -1,13 +1,16 @@
 import sys
-import torch
+
 import numpy as np
+import torch
 from tqdm import tqdm
+
 sys.path.append("/home/jovyan/20230406_ArticleClassifier/ArticleClassifier")
 
 import src.general.global_variables as gv
 from src.general.utils import cc_path
 from src.data.data_loader import DataLoader as OwnDataLoader
-from torch.utils.data import TensorDataset, DataLoader, RandomSampler, SequentialSampler
+from torch.utils.data import TensorDataset, DataLoader, RandomSampler
+from transformers import BertModel
 
 sys.path.append(gv.PROJECT_PATH)
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
@@ -162,5 +165,14 @@ def generate_dataloader_objects(tokenizer, label_columns, processed_df, puis, ba
     datasets[dataset_name] = tensor_data
     dataloaders[dataset_name] = dataloader
 
-
     return dataloaders, datasets
+
+
+def load_bert_model(model_path):
+    do_lower_case = True
+    if model_path == 'scibert_scivocab_uncased':
+        model = BertModel.from_pretrained(model_path, do_lower_case=do_lower_case)
+    else:
+        model = torch.load(cc_path(model_path))
+
+    return model.base_model

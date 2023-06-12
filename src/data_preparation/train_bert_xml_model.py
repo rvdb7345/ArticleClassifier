@@ -1,10 +1,12 @@
+import copy
 import os
 import sys
+
 import numpy as np
 import torch
-from tqdm import tqdm
 from sklearn.metrics import f1_score, recall_score, precision_score
-import copy
+from tqdm import tqdm
+
 sys.path.append("/home/jovyan/20230406_ArticleClassifier/ArticleClassifier")
 
 import src.general.global_variables as gv
@@ -16,8 +18,8 @@ sys.path.append(
 
 from src.data_processor.xml_model import Hybrid_XML
 from src.data_preparation.bert_utils import generate_canary_embedding_text, generate_litcovid_embedding_text, \
-    load_canary_data, load_litcovid_data, generate_dataloader_objects
-from transformers import BertTokenizer, BertModel, AutoTokenizer
+    load_canary_data, load_litcovid_data, generate_dataloader_objects, load_bert_model
+from transformers import AutoTokenizer
 
 
 device = torch.device("cuda:0") if torch.cuda.is_available() else torch.device("cpu")
@@ -25,14 +27,6 @@ device = torch.device("cuda:0") if torch.cuda.is_available() else torch.device("
 MAX_LEN = 512
 
 
-def load_bert_model(model_path):
-    do_lower_case = True
-    if model_path == 'scibert_scivocab_uncased':
-        model = BertModel.from_pretrained(model_path)
-    else:
-        model = torch.load(cc_path(model_path))
-
-    return model.base_model
 
 
 def get_label_embeddings(path, embedding_size):
