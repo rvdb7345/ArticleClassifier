@@ -4,6 +4,9 @@ import sys
 from src.data_preparation.create_data_split import create_train_val_test_split
 from src.data_preparation.network_generation.create_author_networks import create_author_network
 from src.data_preparation.network_generation.create_keyword_networks import create_keyword_network
+from src.data_preparation.text_embedding.inference_bert_xml_model import inference_xml_embedder
+from src.data_preparation.text_embedding.inference_scibert_model import generate_scibert_embeddings
+from src.data_preparation.text_embedding.train_bert_xml_model import train_xml_embedder
 from src.data_preparation.text_embedding.train_scibert_model import scibert_finetuning
 
 sys.path.append("/home/jovyan/20230406_ArticleClassifier/ArticleClassifier")
@@ -78,6 +81,13 @@ def main():
 
     if args.train_scibert is not None:
         scibert_finetuning(args.train_scibert)
+    if args.inference_scibert is not None:
+        generate_scibert_embeddings(args.infer_scibert)
+
+    if args.train_xml_embedder is not None:
+        train_xml_embedder(args.train_xml_embedder)
+    if args.inference_xml_embedder is not None:
+        inference_xml_embedder(args.inference_xml_embedder)
 
 
 if __name__ == "__main__":
