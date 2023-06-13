@@ -4,6 +4,7 @@ import sys
 from src.data_preparation.create_data_split import create_train_val_test_split
 from src.data_preparation.network_generation.create_author_networks import create_author_network
 from src.data_preparation.network_generation.create_keyword_networks import create_keyword_network
+from src.data_preparation.text_embedding.train_scibert_model import scibert_finetuning
 
 sys.path.append("/home/jovyan/20230406_ArticleClassifier/ArticleClassifier")
 
@@ -70,8 +71,13 @@ def main():
 
         if args.generate_network[1] == 'author':
             create_author_network(args.generate_network[0])
-        if args.generate_network[1] == 'keyword':
+        elif args.generate_network[1] == 'keyword':
             create_keyword_network(args.generate_network[0])
+        else:
+            assert False, f'Network type {args.generate_network[1]} not recognized'
+
+    if args.train_scibert is not None:
+        scibert_finetuning(args.train_scibert)
 
 
 if __name__ == "__main__":

@@ -51,5 +51,7 @@ def create_argument_parser() -> argparse.ArgumentParser:
                         help='Create a dataset for the canary data')
     parser.add_argument('--generate_network', default=None, nargs=2,
                         help='Generate a networkx network from a processed text file (e.g. --generate_network [dataset] [network_type]')
+    parser.add_argument('--train_scibert', type=str, default=None,
+                        help='Train SciBERT model on data')
 
     return parser

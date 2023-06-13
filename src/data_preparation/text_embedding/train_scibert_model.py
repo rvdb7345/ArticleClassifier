@@ -257,5 +257,4 @@ def scibert_finetuning(dataset_to_run):
 
 if __name__ == '__main__':
     dataset_to_run = 'litcovid'
-
     scibert_finetuning(dataset_to_run)
