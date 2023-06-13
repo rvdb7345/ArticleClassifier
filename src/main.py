@@ -31,6 +31,8 @@ def main():
         elif args.optimize == 'clf_head':
             classification_head_optimization()
         elif args.optimize == 'threshold_experiment':
+            if args.pruning_threshold is None:
+                assert False, 'Pruning threshold argument not set. Please include --pruning_threshold [float]'
             threshold_experiment(args.pruning_threshold)
         else:
             assert False, f'Optimization method: {args.optimize} not defined.'

@@ -16,11 +16,11 @@ sys.path.append(gv.PROJECT_PATH)
 sys.path.append(
     os.path.abspath(os.path.join(os.path.dirname('data_loader.py'), os.path.pardir)))
 
-from src.data_processor.xml_model import Hybrid_XML
-from src.data_preparation.bert_utils import generate_canary_embedding_text, generate_litcovid_embedding_text, \
+from src.data_preparation.text_embedding.embedding_models.xml_model import Hybrid_XML
+from src.data_preparation.text_embedding.bert_utils import generate_canary_embedding_text, \
+    generate_litcovid_embedding_text, \
     load_canary_data, load_litcovid_data, generate_dataloader_objects, load_bert_model
 from transformers import AutoTokenizer
-
 
 device = torch.device("cuda:0") if torch.cuda.is_available() else torch.device("cpu")
 

@@ -1,21 +1,19 @@
-import torch
-import pandas as pd
-import numpy as np
 import gc
-from torch.utils.data import TensorDataset, DataLoader, RandomSampler, SequentialSampler
-from transformers import AutoTokenizer
-
 import sys
 
+import numpy as np
+import pandas as pd
+import torch
+from torch.utils.data import TensorDataset, DataLoader
 from tqdm import tqdm
+from transformers import AutoTokenizer
 
 sys.path.append("/home/jovyan/20230406_ArticleClassifier/ArticleClassifier")
 
-import src.general.global_variables as gv
 from src.general.utils import cc_path
-from src.data_preparation.bert_utils import BERTPreprocessor
+from src.data_preparation.text_embedding.bert_utils import BERTPreprocessor
 
-from src.data_preparation.train_bert_xml_model import \
+from src.data_preparation.text_embedding.train_bert_xml_model import \
     load_canary_data, generate_canary_embedding_text, load_litcovid_data, generate_litcovid_embedding_text
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 

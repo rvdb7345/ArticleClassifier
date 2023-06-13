@@ -5,7 +5,8 @@ import torch
 from tqdm import tqdm
 from transformers import AutoTokenizer
 
-from src.data_preparation.bert_utils import load_canary_data, load_litcovid_data, generate_litcovid_embedding_text, \
+from src.data_preparation.text_embedding.bert_utils import load_canary_data, load_litcovid_data, \
+    generate_litcovid_embedding_text, \
     generate_canary_embedding_text, load_bert_model
 
 sys.path.append("/home/jovyan/20230406_ArticleClassifier/ArticleClassifier")

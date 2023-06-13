@@ -1,31 +1,30 @@
 '''Code based on: https://www.kaggle.com/code/vpkprasanna/bert-model-with-0-845-accuracy/notebook'''
 
-import torch
-import time
-import random
-
 import copy
-from sklearn.metrics import f1_score
-import numpy as np
-from sklearn.metrics import accuracy_score, precision_recall_fscore_support
-from transformers import BertTokenizer, BertModel
-from transformers import AdamW, get_linear_schedule_with_warmup
-
-import sys
 import os
+import random
+import sys
+import time
+
+import numpy as np
+import torch
+from sklearn.metrics import accuracy_score, precision_recall_fscore_support
+from sklearn.metrics import f1_score
 from tqdm import tqdm
+from transformers import AdamW, get_linear_schedule_with_warmup
+from transformers import BertTokenizer
+
 sys.path.append("/home/jovyan/20230406_ArticleClassifier/ArticleClassifier")
 
-import src.general.global_variables as gv
 sys.path.append(
     os.path.abspath(os.path.join(os.path.dirname('data_loader.py'), os.path.pardir)))
 from src.general.utils import cc_path
-from src.data_preparation.bert_finetuning_model import BertClassifier
-from src.data_preparation.bert_utils import BERTPreprocessor
-from src.data_preparation.bert_utils import generate_canary_embedding_text, generate_litcovid_embedding_text, \
+from src.data_preparation.text_embedding.embedding_models.bert_finetuning_model import BertClassifier
+from src.data_preparation.text_embedding.bert_utils import generate_litcovid_embedding_text, \
     load_canary_data, load_litcovid_data, generate_dataloader_objects
 
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+
 
 def compute_metrics(eval_preds):
     labels = eval_preds.label_ids
