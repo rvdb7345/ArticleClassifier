@@ -43,6 +43,8 @@ def create_argument_parser() -> argparse.ArgumentParser:
                         help='The threshold to prune the keyword network with')
 
     # data preparation
+    parser.add_argument('--parse_car_xml', action='store_true',
+                        help='Parse original CAR xml files to CSV files')
     parser.add_argument('--process_data', type=str, default=None,
                         help='The dataset to process from raw text to embedding ready text')
 
