@@ -48,6 +48,8 @@ def create_argument_parser() -> argparse.ArgumentParser:
     parser.add_argument('--process_data', type=str, default=None,
                         help='The dataset to process from raw text to embedding ready text')
     parser.add_argument('--create_data_split', type=str, default=None,
-                        help='The dataset to process from raw text to embedding ready text')
+                        help='Create a dataset for the canary data')
+    parser.add_argument('--generate_network', default=None, nargs=2,
+                        help='Generate a networkx network from a processed text file (e.g. --generate_network [dataset] [network_type]')
 
     return parser

@@ -2,6 +2,8 @@
 import sys
 
 from src.data_preparation.create_data_split import create_train_val_test_split
+from src.data_preparation.network_generation.create_author_networks import create_author_network
+from src.data_preparation.network_generation.create_keyword_networks import create_keyword_network
 
 sys.path.append("/home/jovyan/20230406_ArticleClassifier/ArticleClassifier")
 
@@ -30,9 +32,12 @@ def main():
         logger.info("Model ID not provided - creating new model.")
 
     # redirect to correct process
+
+    # do a model run
     if args.run_model:
         run_single_model()
 
+    # optimize the models
     if args.optimize is not None:
         if args.optimize == 'graph':
             graph_optimization()
@@ -45,6 +50,7 @@ def main():
         else:
             assert False, f'Optimization method: {args.optimize} not defined.'
 
+    # data preparation
     if args.process_data == 'canary':
         process_canary_data()
     elif args.process_data == 'litcovid':
@@ -57,6 +63,15 @@ def main():
 
     if args.create_data_split:
         create_train_val_test_split()
+
+    if args.generate_network is not None:
+        assert len(
+            args.generate_network) == 2, f'Provided {len(args.generate_network)} arguments, must be 2 --generate_network [dataset] [network_type]'
+
+        if args.generate_network[1] == 'author':
+            create_author_network(args.generate_network[0])
+        if args.generate_network[1] == 'keyword':
+            create_keyword_network(args.generate_network[0])
 
 
 if __name__ == "__main__":
