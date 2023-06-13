@@ -7,6 +7,7 @@ from src.general.logger_creator import create_logger
 
 from src.optuna_optimization import graph_optimization, classification_head_optimization, threshold_experiment
 from src.run_model import run_single_model
+from src.data_preparation.create_processed_dataset import process_canary_data, process_litcovid_data
 
 def main():
     """Main function to start the correct process as specified by the command line."""
@@ -23,8 +24,11 @@ def main():
         logger.info(f"Model ID: {args.model_id}")
     else:
         logger.info("Model ID not provided - creating new model.")
-    
+
     # redirect to correct process
+    if args.run_model:
+        run_single_model()
+
     if args.optimize is not None:
         if args.optimize == 'graph':
             graph_optimization()
@@ -36,9 +40,14 @@ def main():
             threshold_experiment(args.pruning_threshold)
         else:
             assert False, f'Optimization method: {args.optimize} not defined.'
-    if args.run_model:
-        run_single_model()
-        
+
+    if args.process_data == 'canary':
+        process_canary_data()
+    elif args.process_data == 'litcovid':
+        process_litcovid_data()
+    elif args.process_data is not None:
+        assert False, f'Specified dataset {args.process_data} not recognised.'
+
 
 if __name__ == "__main__":
     main()
