@@ -1,8 +1,8 @@
-"""This file defines the GCN single stream model."""
+"""This file defines the GAT dual stream model."""
 
-from torch_geometric.nn import GATv2Conv
 import torch
 import torch.nn.functional as F
+from torch_geometric.nn import GATv2Conv
 
 
 class dualGAT(torch.nn.Module):

@@ -1,9 +1,10 @@
-"""This file defines the GCN single stream model."""
+"""This file defines the GCN dual stream model."""
 
-from torch_geometric.nn import GCNConv
 import torch
 import torch.nn.functional as F
-    
+from torch_geometric.nn import GCNConv
+
+
 class dualGCN(torch.nn.Module):
     def __init__(self, hidden_channels, embedding_size, num_features, num_labels, num_conv_layers, dropout):
         super().__init__()

@@ -1,8 +1,9 @@
 """This file defines the GAT single stream model with skip connections to extend the graph network without losing information."""
 
-from torch_geometric.nn import GATv2Conv
 import torch
 import torch.nn.functional as F
+from torch_geometric.nn import GATv2Conv
+
 
 class ResidualConnection(torch.nn.Module):
     def __init__(self, alpha=0.5):
@@ -88,6 +89,3 @@ class GNN(torch.nn.Module):
         x = self.sigmoid(x)
 
         return x
-
-    
-model = GNN(author_data.x.shape[1], 64, 52, 4, 4)
