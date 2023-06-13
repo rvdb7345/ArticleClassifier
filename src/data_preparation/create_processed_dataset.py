@@ -8,6 +8,7 @@ from datetime import datetime
 import pandas as pd
 from sklearn.preprocessing import MultiLabelBinarizer
 
+sys.path.append("/home/jovyan/20230406_ArticleClassifier/ArticleClassifier")
 import src.general.global_variables as gv
 from src.general.utils import cc_path
 

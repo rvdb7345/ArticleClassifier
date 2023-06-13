@@ -1,8 +1,13 @@
+"""File that contains the code to process the CAR XML files from the canary data to CSV files."""
 import glob
+import sys
 import xml.etree.ElementTree as ET
 
 import numpy as np
 import pandas as pd
+
+sys.path.append("/home/jovyan/20230406_ArticleClassifier/ArticleClassifier")
+from src.general.utils import cc_path
 
 
 # -- Introduction --
@@ -10,14 +15,12 @@ import pandas as pd
 
 # TODO: add a parameter to choose between subheadings and checktags
 
-def parse_document_classification(path="../../data/"):
-    """
-        Function to parse the needed input and labels for
-        document-level classification from all XML files.
-    """
+
+def parse_document_classification(path: str = 'data/raw/canary/original_xml_files/'):
+    """Function to parse the needed input and labels for document-level classification from all XML files."""
 
     # Load XMLs and extract PUIs
-    files = sorted(glob.glob(path + "*.xml"))
+    files = sorted(glob.glob(cc_path(path + "*.xml")))
 
     # Define XML namespaces
     prefix_map = {"ns0": "http://www.elsevier.com/xml/ani/ani",
@@ -39,7 +42,7 @@ def parse_document_classification(path="../../data/"):
     # columns += clf_labels
 
     # - subheadings
-    clf_labels = pd.read_csv(path + "paulas_labels.csv", sep=";", header=None).iloc[:, 0].tolist()
+    clf_labels = pd.read_csv(cc_path(path + "paulas_labels.csv"), sep=";", header=None).iloc[:, 0].tolist()
     columns += clf_labels
 
     # - check tags groups (not for pipeline - used for experimentation)
@@ -217,4 +220,4 @@ def get_pui_doi_map(path="../../data/", version="A"):
 
 
 if __name__ == "__main__":
-    parse_document_classification('../../data/raw/canary/original_xml_files/')
+    parse_document_classification('data/raw/canary/original_xml_files/')

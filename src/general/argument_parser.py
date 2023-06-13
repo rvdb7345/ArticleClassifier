@@ -1,11 +1,9 @@
 """This file parses the arguments from the terminal."""
-import sys
 import argparse
 import configparser
-from typing import Union, Optional
+import sys
 
 sys.path.append("/home/jovyan/20230406_ArticleClassifier/ArticleClassifier")
-from src.general.utils import cc_path
 
 
 def create_argument_parser() -> argparse.ArgumentParser:
@@ -25,15 +23,27 @@ def create_argument_parser() -> argparse.ArgumentParser:
 
     # parse the arguments from the command line
     parser = argparse.ArgumentParser(description="Article Classifier")
-    parser.add_argument('-v', '--verbosity', type=str, choices=['critical', 'error', 'warning', 'info', 'debug'], default='info',
+
+    # code settings
+    parser.add_argument('-v', '--verbosity', type=str, choices=['critical', 'error', 'warning', 'info', 'debug'],
+                        default='info',
                         help=f'Set verbosity level: critical, error, warning, info, debug (default: info)')
+
+    # run
     parser.add_argument('-m', '--model_id', type=str, default=None,
                         help=f'Optional model selection by id default: none')
-    parser.add_argument('--run_model', type=float, default=False, 
+    parser.add_argument('--run_model', type=float, default=False,
                         help='Run a single model training and evaluation')
-    parser.add_argument('-o', '--optimize', type=str, default=None, choices=['clf_head', 'graph', 'threshold_experiment'],
+
+    # optimisation
+    parser.add_argument('-o', '--optimize', type=str, default=None,
+                        choices=['clf_head', 'graph', 'threshold_experiment'],
                         help=f'Run optimization for the graph or the classification: use "graph" or "clf_head".')
-    parser.add_argument('--pruning_threshold', type=float, default=None, 
+    parser.add_argument('--pruning_threshold', type=float, default=None,
                         help='The threshold to prune the keyword network with')
-    
+
+    # data preparation
+    parser.add_argument('--process_data', type=str, default=None,
+                        help='The dataset to process from raw text to embedding ready text')
+
     return parser

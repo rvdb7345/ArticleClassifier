@@ -8,6 +8,7 @@ from src.general.logger_creator import create_logger
 from src.optuna_optimization import graph_optimization, classification_head_optimization, threshold_experiment
 from src.run_model import run_single_model
 from src.data_preparation.create_processed_dataset import process_canary_data, process_litcovid_data
+from src.data_preparation.parse_car_xml import parse_document_classification
 
 def main():
     """Main function to start the correct process as specified by the command line."""
@@ -47,6 +48,9 @@ def main():
         process_litcovid_data()
     elif args.process_data is not None:
         assert False, f'Specified dataset {args.process_data} not recognised.'
+
+    if args.parse_car_xml:
+        parse_document_classification()
 
 
 if __name__ == "__main__":
