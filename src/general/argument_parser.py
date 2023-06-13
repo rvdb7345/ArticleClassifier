@@ -59,5 +59,7 @@ def create_argument_parser() -> argparse.ArgumentParser:
                         help='Train SciBERT model on data (e.g. --train_xml_embedder [dataset]')
     parser.add_argument('--inference_xml_embedder', type=str, default=None,
                         help='Create SciBERT embeddings (e.g. --inference_xml_embedder [dataset]')
+    parser.add_argument('--embed_labels', type=str, default=None,
+                        help='Create label embeddings (e.g. --embed_labels [dataset]')
 
     return parser

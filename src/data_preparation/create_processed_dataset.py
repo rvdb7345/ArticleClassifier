@@ -99,7 +99,7 @@ def process_canary_data():
 
     # save the processed dataframe
     today = datetime.today().strftime('%Y%m%d')
-    data_df.to_csv(cc_path(f'data/processed/canary/articles_cleaned_{today}.csv'))
+    data_df.to_csv(cc_path(f'data/processed/canary/canary_articles_cleaned_{today}.csv'))
 
 
 if __name__ == '__main__':

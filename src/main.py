@@ -2,8 +2,10 @@
 import sys
 
 from src.data_preparation.create_data_split import create_train_val_test_split
+from src.data_preparation.label_embedding.node_to_vec_label_embedding import node2vec_label_embedding
 from src.data_preparation.network_generation.create_author_networks import create_author_network
 from src.data_preparation.network_generation.create_keyword_networks import create_keyword_network
+from src.data_preparation.network_generation.create_label_networks import create_label_network
 from src.data_preparation.text_embedding.inference_bert_xml_model import inference_xml_embedder
 from src.data_preparation.text_embedding.inference_scibert_model import generate_scibert_embeddings
 from src.data_preparation.text_embedding.train_bert_xml_model import train_xml_embedder
@@ -76,6 +78,8 @@ def main():
             create_author_network(args.generate_network[0])
         elif args.generate_network[1] == 'keyword':
             create_keyword_network(args.generate_network[0])
+        elif args.generate_network[1] == 'label':
+            create_label_network(args.generate_network[0])
         else:
             assert False, f'Network type {args.generate_network[1]} not recognized'
 
@@ -88,6 +92,9 @@ def main():
         train_xml_embedder(args.train_xml_embedder)
     if args.inference_xml_embedder is not None:
         inference_xml_embedder(args.inference_xml_embedder)
+
+    if args.embed_labels is not None:
+        node2vec_label_embedding(args.embed_labels)
 
 
 if __name__ == "__main__":
