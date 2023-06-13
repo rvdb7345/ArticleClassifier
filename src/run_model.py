@@ -1,20 +1,16 @@
 """This file contains the pipeline for training and evaluating the GCN on the data."""
-import os
 import io
-import sys
-import random
 import logging
-import pandas as pd
 import pickle
-from typeguard import typechecked
+import random
+import sys
 from typing import Dict, List, Tuple, Union, Optional
 
+import pandas as pd
 import torch
-from torch_geometric.data import Data, DataLoader, Batch
-from torch_geometric.utils.convert import from_networkx
-
+from torch_geometric.data import Data, DataLoader
 from torch_geometric.loader import DataLoader, NeighborLoader
-
+from torch_geometric.utils.convert import from_networkx
 
 sys.path.append("/home/jovyan/20230406_ArticleClassifier/ArticleClassifier")
 
@@ -38,7 +34,7 @@ from src.general.utils import cc_path, save_results
 from src.models.graph_training import evaluate_metrics, train_model, evaluate_metrics_batch
 
 from src.models.pipeline_configuration import get_loss_fn, get_optimizer, initiate_model
-from src.models.pretraining import  pretrain
+from src.models.pretraining import pretrain
  
     
 def wipe_memory(optimizer): # DOES WORK
@@ -60,14 +56,9 @@ def _optimizer_to(device, optimizer):
                     subparam.data = subparam.data.to(device)
                     if subparam._grad is not None:
                         subparam._grad.data = subparam._grad.data.to(device)
-                        
-# Create and configure logger
-logging.basicConfig(filename="newfile.log",
-                    format='%(asctime)s %(message)s',
-                    filemode='w')
- 
+
 # Creating an object
-logger = logging.getLogger()
+logger = logging.getLogger('articleclassifier')
 
 device = torch.device("cuda:0") if torch.cuda.is_available() else torch.device("cpu")
 

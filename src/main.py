@@ -1,5 +1,8 @@
 """This file executes the right process."""
 import sys
+
+from src.data_preparation.create_data_split import create_train_val_test_split
+
 sys.path.append("/home/jovyan/20230406_ArticleClassifier/ArticleClassifier")
 
 from src.general.argument_parser import create_argument_parser
@@ -51,6 +54,9 @@ def main():
 
     if args.parse_car_xml:
         parse_document_classification()
+
+    if args.create_data_split:
+        create_train_val_test_split()
 
 
 if __name__ == "__main__":

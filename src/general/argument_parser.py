@@ -47,5 +47,7 @@ def create_argument_parser() -> argparse.ArgumentParser:
                         help='Parse original CAR xml files to CSV files')
     parser.add_argument('--process_data', type=str, default=None,
                         help='The dataset to process from raw text to embedding ready text')
+    parser.add_argument('--create_data_split', type=str, default=None,
+                        help='The dataset to process from raw text to embedding ready text')
 
     return parser
