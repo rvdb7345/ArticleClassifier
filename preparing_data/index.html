@@ -55,6 +55,14 @@
               <ul class="current">
                 <li class="toctree-l1 current"><a class="reference internal current" href="./">Data Preparation</a>
     <ul class="current">
+    <li class="toctree-l2"><a class="reference internal" href="#processing-car-data-srcdata_preparationparse_car_xmlpy">Processing CAR data (src/data_preparation/parse_car_xml.py)</a>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#processing-text-srcdata_preparationcreate_processed_datasetpy">Processing text (src/data_preparation/create_processed_dataset.py)</a>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#creating-graph-networks-srcdata_preparationnetwork_generationcreate_network_type_networkspy">Creating graph networks (src/data_preparation/network_generation/create_{network_type}_networks.py)</a>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#generating-a-data-split-srcdata_preparationcreate_data_splitpy">Generating a data split (src/data_preparation/create_data_split.py)</a>
+    </li>
     </ul>
                 </li>
               </ul>
@@ -90,19 +98,83 @@
             <div class="section" itemprop="articleBody">
               
                 <h1 id="preparing-data">Preparing data</h1>
-<p>This ReadMe explains how to prepare your data sources from the raw CARs to finetuned embedding text and graph networks. </p>
-<p>Processing CAR data
-^^^^^^^^^^^^^^^^^^^
-From the CAR data we create a single CSV file to work with, extracting the data that we want.</p>
-<p>Creating graph networks
-^^^^^^^^^^^^^^^^^^^^^^^
-To train GNNs, we need graph networks. We build them using the create_author_networks.py and create_keyword_networks.py files.</p>
-<ul>
-<li>make sure the environment is built from the requirements.txt file.</li>
-<li>build the datasets as described in the data_preparation folder</li>
-</ul>
-<p>Training a model
-^^^^^^^^^^^^^^^^</p>
+<p>This ReadMe explains how to prepare your data sources from the raw CARs to finetuned embedding text and graph networks.
+The steps are given <strong>sequentially</strong>, so follow them in order, only skipping the steps that are not applicable for your
+dataset as indicated.</p>
+<p>The choice not to run everything in one single go is based on memory usage and possible errors in between.
+However, if you are really set on running everything directly after each other, just create a simple bash script.
+This avoids memory issues and doesn't require adding python code.</p>
+<h2 id="processing-car-data-srcdata_preparationparse_car_xmlpy">Processing CAR data (<code>src/data_preparation/parse_car_xml.py</code>)</h2>
+<p>Applies to: ['canary']</p>
+<p>From the CAR data, we create a single CSV file to work with, extracting the data that we want.</p>
+<p>Command: <code>python main.py --parse_car_xml</code></p>
+<p>Input files: <code>data/raw/canary/original_xml_files/*.xml</code></p>
+<p>Output files: <code>data/processed/canary/all_articles_diff_labels.csv</code></p>
+<h2 id="processing-text-srcdata_preparationcreate_processed_datasetpy">Processing text (<code>src/data_preparation/create_processed_dataset.py</code>)</h2>
+<p>Applies to: ['canary', 'litcovid']</p>
+<p>Clean the text data and format the data to a uniform format</p>
+<p>Command:</p>
+<pre><code class="language-commandline">python main.py --process_data dataset
+</code></pre>
+<p>Input files: raw csv files (e.g. <code>data/processed/canary/all_articles_diff_labels.csv</code>)</p>
+<p>Output files: <code>f'data/processed/{dataset}/{dataset}_articles_cleaned_{today}.csv'</code></p>
+<h2 id="creating-graph-networks-srcdata_preparationnetwork_generationcreate_network_type_networkspy">Creating graph networks (<code>src/data_preparation/network_generation/create_{network_type}_networks.py</code>)</h2>
+<p>Applies to: ['canary', 'litcovid']</p>
+<p>Create Graph NetworkX structures from the processed data.</p>
+<p>Command:</p>
+<pre><code class="language-commandline">python main.py --generate_network dataset network_type
+</code></pre>
+<p>Implemented network types: ['author', 'keyword', 'label']</p>
+<p>Input files: <code>f'data/processed/{dataset}/{dataset}_articles_cleaned_{today}.csv'</code></p>
+<p>Output files: <code>f'data/processed/{dataset}/{network_type}_network.pickle'</code></p>
+<h2 id="generating-a-data-split-srcdata_preparationcreate_data_splitpy">Generating a data split (<code>src/data_preparation/create_data_split.py</code>)</h2>
+<p>Applies to: ['canary']</p>
+<p>Generates a 64-16-20 data split if the dataset doesn't yet specify a data split.</p>
+<p>Command:</p>
+<pre><code class="language-commandline">python main.py --create_data_split dataset
+</code></pre>
+<h1 id="generating-embeddings">Generating Embeddings</h1>
+<h2 id="generate-label-embedding-models-srcdata_preparationlabel_embeddingnode_to_vec_label_embeddingpy">Generate label embedding models (<code>src/data_preparation/label_embedding/node_to_vec_label_embedding.py</code>)</h2>
+<p>Applies to: ['canary', 'litcovid']</p>
+<p>Embed the label graph to use in the LAHA text embeddings.</p>
+<p>Command:</p>
+<pre><code class="language-commandline">python main.py --embed_labels dataset
+</code></pre>
+<p>Input files: <code>f'data/processed/{dataset}/{dataset}_label_network_weighted.pickle'</code></p>
+<h2 id="training-text-embedding-models">Training text embedding models</h2>
+<h3 id="finetuning-scibert-srcdata_preparationtext_embeddingtrain_scibert_modelpy">Finetuning SciBERT (<code>src/data_preparation/text_embedding/train_scibert_model.py</code>)</h3>
+<p>Applies to: ['canary', 'litcovid']</p>
+<p>Create a finetuned SciBERT model.
+Set the file paths to the processed text files.</p>
+<p>Command:</p>
+<pre><code class="language-commandline">python main.py --train_scibert dataset
+</code></pre>
+<p>Input files: <code>f'data/processed/{dataset}/{dataset}_articles_cleaned_{today}.csv'</code></p>
+<h3 id="training-scibert-laha-srcdata_preparationtext_embeddingtrain_bert_xml_modelpy">Training SciBERT-LAHA (<code>src/data_preparation/text_embedding/train_bert_xml_model.py</code>)</h3>
+<p>Applies to: ['canary', 'litcovid']</p>
+<p>Create a trained LAHA model.
+Set the file paths to the processed text files and finetuned SciBERT model.</p>
+<p>Command:</p>
+<pre><code class="language-commandline">python main.py --train_xml_embedder dataset
+</code></pre>
+<p>Input files: <code>f'data/processed/{dataset}/{dataset}_articles_cleaned_{today}.csv'</code></p>
+<h2 id="generate-text-embeddings">Generate Text Embeddings</h2>
+<h3 id="scibert-inference-srcdata_preparationtext_embeddinginference_scibert_modelpy">SciBERT inference (<code>src/data_preparation/text_embedding/inference_scibert_model.py</code>)</h3>
+<p>Applies to: ['canary', 'litcovid']</p>
+<p>Generate text embeddings with the finetuned SciBERT model.
+Set the file paths to the processed text files and finetuned SciBERT model.</p>
+<p>Command:</p>
+<pre><code class="language-commandline">python main.py --inference_scibert dataset
+</code></pre>
+<p>Input files: <code>f'data/processed/{dataset}/{dataset}_articles_cleaned_{today}.csv'</code></p>
+<h3 id="scibert-laha-inference-srcdata_preparationtext_embeddinginference_bert_xml_modelpy">SciBERT-LAHA inference (<code>src/data_preparation/text_embedding/inference_bert_xml_model.py</code>)</h3>
+<p>Applies to: ['canary', 'litcovid']</p>
+<p>Generate text embeddings with the trained LAHA-SciBERT model.
+Set the file paths to the processed text files and trained LAHA-SciBERT model.</p>
+<p>Command:</p>
+<pre><code class="language-commandline">python main.py --inference_xml_embedder dataset
+</code></pre>
+<p>Input files: <code>f'data/processed/{dataset}/{dataset}_articles_cleaned_{today}.csv'</code></p>
               
             </div>
           </div><footer>

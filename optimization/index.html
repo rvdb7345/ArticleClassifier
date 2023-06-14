@@ -90,9 +90,16 @@
             <div class="section" itemprop="articleBody">
               
                 <h1 id="optimising-a-model">Optimising a model</h1>
-<p>As each model comprises of separate components, we optimise each component individually. The components in question are:
-* GNN
-* Classification head</p>
+<p>As each model comprises of separate components, we optimise each component individually. The components in question are:</p>
+<ul>
+<li>GNN (<code>graph</code>)</li>
+<li>Classification head (<code>clf_head</code>)</li>
+<li>Keyword pruning threshold (<code>threshold_experiment</code>)</li>
+</ul>
+<p>All separate components can be optimised using the <code>--optimize</code> flag. E.g.:</p>
+<pre><code class="language-commandline">python main.py --optimize 'clf_head'
+</code></pre>
+<p>The additional parameters are those set in the settings files.</p>
               
             </div>
           </div><footer>

@@ -59,6 +59,12 @@
               <ul class="current">
                 <li class="toctree-l1 current"><a class="reference internal current" href="./">Training</a>
     <ul class="current">
+    <li class="toctree-l2"><a class="reference internal" href="#before-training-a-model">Before training a model</a>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#training-a-model">Training a model</a>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#running-a-trained-model">Running a trained model</a>
+    </li>
     </ul>
                 </li>
               </ul>
@@ -90,15 +96,21 @@
             <div class="section" itemprop="articleBody">
               
                 <h1 id="training">Training</h1>
-<p>This ReadMe explains how to train and evaluate a GNN on the data using the command line and the steps that are required to get get there. </p>
-<p>Before training a model
-^^^^^^^^^^^^^^^^^^^^^^^</p>
+<p>This ReadMe explains how to train and evaluate a GNN on the data using the command line.</p>
+<h3 id="before-training-a-model">Before training a model</h3>
 <ul>
-<li>make sure the environment is built from the requirements.txt file.</li>
+<li>make sure the environment is built from the requirements.txt file and activated.</li>
 <li>build the datasets as described in the data_preparation folder</li>
 </ul>
-<p>Training a model
-^^^^^^^^^^^^^^^^</p>
+<h2 id="training-a-model">Training a model</h2>
+<p>Training a new model is very straightforward. After setting the preferred settings as per the 'settings' page, you can
+run:</p>
+<pre><code class="language-commandline">python main.py --run_model
+</code></pre>
+<h2 id="running-a-trained-model">Running a trained model</h2>
+<p>In case you want to rerun a trained model, you can add the id of the model:</p>
+<pre><code class="language-commandline">python main.py --run_model --model_id model_id
+</code></pre>
               
             </div>
           </div><footer>

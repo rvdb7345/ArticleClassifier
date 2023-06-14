@@ -90,6 +90,24 @@
             <div class="section" itemprop="articleBody">
               
                 <h1 id="project-installation">Project Installation</h1>
+<p>The project environment may be set up using:
+<code>conda create --name articleclassifier --file requirements.txt</code></p>
+<p>Confirm afterwards that the GPU configuration has succeeded (if actually using Nvidia GPUs, but if not, you should get
+trained models from someone, because training without GPUs takes ages.)
+You can do a quick check by looking at the output of the following code:</p>
+<pre><code class="language-python">print('__Python VERSION:', sys.version)
+print('__pyTorch VERSION:', torch.__version__)
+print('__CUDA VERSION', )
+from subprocess import call
+# call([&quot;nvcc&quot;, &quot;--version&quot;]) does not work
+! nvcc - -version
+print('__CUDNN VERSION:', torch.backends.cudnn.version())
+print('__Number CUDA Devices:', torch.cuda.device_count())
+print('__Devices')
+# call([&quot;nvidia-smi&quot;, &quot;--format=csv&quot;, &quot;--query-gpu=index,name,driver_version,memory.total,memory.used,memory.free&quot;])
+print('Active CUDA Device: GPU', torch.cuda.current_device())
+print('Available devices ', torch.cuda.device_count())
+</code></pre>
               
             </div>
           </div><footer>
