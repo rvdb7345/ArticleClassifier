@@ -27,7 +27,7 @@ def create_author_network(dataset):
     network_constructor = AuthorNetworkConstructor(processed_df)
     author_network = network_constructor.generate_network(weight_type='not_weighted')
 
-    with open(cc_path('data/processed/canary/author_network.pickle'), 'wb') as file:
+    with open(cc_path(f'data/processed/{dataset}/author_network.pickle'), 'wb') as file:
         pickle.dump(author_network, file)
 
 

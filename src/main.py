@@ -67,8 +67,8 @@ def main():
     if args.parse_car_xml:
         parse_document_classification()
 
-    if args.create_data_split:
-        create_train_val_test_split()
+    if args.create_data_split is not None:
+        create_train_val_test_split(args.create_data_split)
 
     if args.generate_network is not None:
         assert len(

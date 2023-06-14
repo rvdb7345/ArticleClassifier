@@ -46,7 +46,7 @@ def create_argument_parser() -> argparse.ArgumentParser:
     parser.add_argument('--parse_car_xml', action='store_true',
                         help='Parse original CAR xml files to CSV files')
     parser.add_argument('--process_data', type=str, default=None,
-                        help='The dataset to process from raw text to embedding ready text')
+                        help='The dataset to process from raw text to embedding ready text (e.g. --process_data [dataset]')
     parser.add_argument('--create_data_split', type=str, default=None,
                         help='Create a dataset for the canary data')
     parser.add_argument('--generate_network', default=None, nargs=2,

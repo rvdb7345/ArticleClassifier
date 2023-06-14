@@ -31,7 +31,7 @@ def create_keyword_network(dataset):
 
     print(len(keyword_network))
 
-    with open(cc_path('data/processed/litcovid/litcovid_keyword_network_weighted.pickle'), 'wb') as file:
+    with open(cc_path(f'data/processed/{dataset}/{dataset}_keyword_network.pickle'), 'wb') as file:
         pickle.dump(keyword_network, file)
 
 

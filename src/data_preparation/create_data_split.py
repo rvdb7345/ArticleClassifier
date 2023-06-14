@@ -39,11 +39,15 @@ def write_indices_to_txt(indices, data_set):
         write_to_text(indices, fname)
 
 
-def create_train_val_test_split():
-    loc_dict = {
-        'keyword_network': cc_path('data/processed/canary/keyword_network_weighted.pickle'),
-        'author_network': cc_path('data/processed/canary/author_network.pickle'),
-    }
+def create_train_val_test_split(dataset):
+    if dataset == 'canary':
+        loc_dict = {
+            'keyword_network': cc_path('data/processed/canary/keyword_network_weighted.pickle'),
+            'author_network': cc_path('data/processed/canary/author_network.pickle'),
+        }
+    else:
+        assert False, f'{dataset} not recognized as available dataset.'
+
     data_loader = DataLoader(loc_dict)
 
     author_networkx = data_loader.load_author_network()
@@ -67,4 +71,5 @@ def create_train_val_test_split():
 
 
 if __name__ == '__main__':
-    create_train_val_test_split()
+    dataset = 'canary'
+    create_train_val_test_split(dataset)
