@@ -27,7 +27,11 @@ Applies to: ['canary', 'litcovid']
 
 Clean the text data and format the data to a uniform format
 
-Command: ```python main.py --process_data [dataset]```
+Command:
+
+```commandline
+python main.py --process_data dataset
+```
 
 Input files: raw csv files (e.g. ```data/processed/canary/all_articles_diff_labels.csv```)
 
@@ -39,7 +43,11 @@ Applies to: ['canary', 'litcovid']
 
 Create Graph NetworkX structures from the processed data.
 
-Command: ```python main.py --generate_network [dataset] [network_type]```
+Command:
+
+```commandline
+python main.py --generate_network dataset network_type
+```
 
 Implemented network types: ['author', 'keyword', 'label']
 
@@ -53,7 +61,11 @@ Applies to: ['canary']
 
 Generates a 64-16-20 data split if the dataset doesn't yet specify a data split.
 
-Command: ```python main.py --create_data_split [dataset]```
+Command:
+
+```commandline
+python main.py --create_data_split dataset
+```
 
 # Generating Embeddings
 
@@ -63,7 +75,11 @@ Applies to: ['canary', 'litcovid']
 
 Embed the label graph to use in the LAHA text embeddings.
 
-Command: ```python main.py --embed_labels [dataset]```
+Command:
+
+```commandline
+python main.py --embed_labels dataset
+```
 
 Input files: ```f'data/processed/{dataset}/{dataset}_label_network_weighted.pickle'```
 
@@ -76,7 +92,11 @@ Applies to: ['canary', 'litcovid']
 Create a finetuned SciBERT model.
 Set the file paths to the processed text files.
 
-Command: ```python main.py --train_scibert [dataset]```
+Command:
+
+```commandline
+python main.py --train_scibert dataset
+```
 
 Input files: ```f'data/processed/{dataset}/{dataset}_articles_cleaned_{today}.csv'```
 
@@ -87,7 +107,11 @@ Applies to: ['canary', 'litcovid']
 Create a trained LAHA model.
 Set the file paths to the processed text files and finetuned SciBERT model.
 
-Command: ```python main.py --train_xml_embedder [dataset]```
+Command:
+
+```commandline
+python main.py --train_xml_embedder dataset
+```
 
 Input files: ```f'data/processed/{dataset}/{dataset}_articles_cleaned_{today}.csv'```
 
@@ -100,7 +124,11 @@ Applies to: ['canary', 'litcovid']
 Generate text embeddings with the finetuned SciBERT model.
 Set the file paths to the processed text files and finetuned SciBERT model.
 
-Command: ```python main.py --inference_scibert [dataset]```
+Command:
+
+```commandline
+python main.py --inference_scibert dataset
+```
 
 Input files: ```f'data/processed/{dataset}/{dataset}_articles_cleaned_{today}.csv'```
 
@@ -111,7 +139,11 @@ Applies to: ['canary', 'litcovid']
 Generate text embeddings with the trained LAHA-SciBERT model.
 Set the file paths to the processed text files and trained LAHA-SciBERT model.
 
-Command: ```python main.py --inference_xml_embedder [dataset]```
+Command:
+
+```commandline
+python main.py --inference_xml_embedder dataset
+```
 
 Input files: ```f'data/processed/{dataset}/{dataset}_articles_cleaned_{today}.csv'```
 
