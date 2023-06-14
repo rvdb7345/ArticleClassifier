@@ -1,7 +1,12 @@
 # Employing GNNs for multi-label classification of biomedical articles
+
 Welcome to the documentation of this project.
 
+This project focuses on multi-label classification of academic articles using GNNs and label-guided embeddings focused
+at mitigating the performance decrease result from strongly imbalanced labels.
+
 The documentation will cover the different aspects of the project, namely:
+
 - [Setting up the project](project_installation.md)
 - [Creating the right settings](settings.md)
 - [Preparing the data](preparing_data.md)
@@ -9,5 +14,7 @@ The documentation will cover the different aspects of the project, namely:
 - [Optimising a model](optimization.md)
 
 ## General Remarks
-This project was created as a 3-month Master Thesis project for the program Information Studies - Data Science. 
-The project was done at Elsevier under the supervision of Bruno Martins and Chieling Yueh. 
+
+This project was created as a 3-month Master Thesis project for the program Information Studies - Data Science.
+The project was in collaboration with Elsevier under the supervision of Bruno Martins and Chieling Yueh and Prof. Paul
+Groth. 
