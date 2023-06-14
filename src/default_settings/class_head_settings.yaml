@@ -1,0 +1,19 @@
+---
+xgboost:
+  silent: 1
+  booster: gbtree
+  lambda: 0.4277251324901281
+  alpha: 0.0886997407398398
+  n_estimators: 473
+  subsample: 0.25629862488570715
+  learning_rate: 0.016385565188229333
+  max_bin: 15
+  colsample_bytree: 0.4540290852788586
+  objective: binary:logistic
+  tree_method: gpu_hist
+  gpu_id: 0
+  max_depth: 4
+  eta: 0.8796479952716122
+  gamma: 0.27077195757296557
+  grow_policy: lossguide
+...

@@ -1,5 +1,4 @@
 site_name: Documentation GNN ArticleClassifier
-site_url: https://GNNAC.com/
 
 theme:
     name: readthedocs

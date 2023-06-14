@@ -1,0 +1,17 @@
+---
+canary:
+  processed_csv: data/processed/canary/articles_cleaned.csv
+  abstract_embeddings: data/processed/canary/embeddings_fasttext_20230410.csv
+  scibert_embeddings: data/processed/canary/embeddings_scibert_finetuned_20230425.csv
+  keyword_network: data/processed/canary/keyword_network_weighted.pickle
+  xml_embeddings: data/processed/canary/embeddings_xml_20230518_68.ftr
+  author_network: data/processed/canary/author_network.pickle
+  label_network: data/processed/canary/label_network_weighted.pickle
+
+litcovid:
+  processed_csv: data/processed/litcovid/litcovid_articles_cleaned_20230529.csv
+  scibert_embeddings: data/processed/litcovid/litcovid_embeddings_scibert_finetuned_20230526_meta_stopwords.csv
+  keyword_network: data/processed/litcovid/litcovid_keyword_network_weighted.pickle
+  xml_embeddings: data/processed/litcovid/litcovid_embeddings_xml_20230529_768.ftr
+  label_network: data/processed/litcovid/litcovid_label_network_weighted.pickle
+...

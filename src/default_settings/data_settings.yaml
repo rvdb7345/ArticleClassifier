@@ -1,0 +1,21 @@
+---
+canary:
+  subsample_size: 56337
+  total_dataset_size: 56337
+  data_type_to_use: [ keyword ]
+  embedding_type: label_specific
+  edge_weight_threshold: 0.0149254
+  num_minority_samples: 2677
+  dataset: canary
+  network_availability: [ keyword, author ]
+
+litcovid:
+  subsample_size: 33671
+  total_dataset_size: 33671
+  data_type_to_use: [ keyword ]
+  embedding_type: label_specific
+  edge_weight_threshold: 0.02325581395
+  num_minority_samples: 2677
+  dataset: litcovid
+  network_availability: [ keyword ]
+...

@@ -1,0 +1,47 @@
+---
+GAT:
+  embedding_size: 256
+  hidden_channels: 16
+  heads: 4
+  num_conv_layers: 1
+  dropout: 0.1
+
+GAT_label:
+  embedding_size: 256
+  hidden_channels: 16
+  heads: 4
+  num_conv_layers: 1
+  dropout: 0.1
+
+GraphTransformer:
+  hidden_channels: 32
+  heads: 8
+
+GCN:
+  embedding_size: 256,
+  hidden_channels: 64,
+  num_conv_layers: 1,
+  dropout: 0.1
+
+SAGE:
+  hidden_channels: 32
+  heads: 4
+
+dualGAT:
+  embedding_size: 256
+  hidden_channels: 16
+  heads: 4
+  num_conv_layers: 1
+  dropout: 0.1
+
+dualGCN:
+  embedding_size: 256,
+  hidden_channels: 64,
+  num_conv_layers: 1,
+  dropout: 0.1
+
+GIN:
+  embedding_size: 128
+  hidden_channels: 64
+  num_conv_layers: 3
+...

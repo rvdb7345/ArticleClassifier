@@ -459,7 +459,7 @@ def run_single_model():
     # run prediction and evaluation with model configuration as specified
     run_model_configuration(exp_ids, all_torch_data, label_columns.columns.difference(['pui']).tolist(),
                             graph_parameters, model_structure_parameters, data_parameters, pretrain_parameters,
-                            class_head_params, num_minority_samples, use_pretrain=False, only_graph=False)
+                            class_head_params, use_pretrain=False, only_graph=False)
 
 
 
