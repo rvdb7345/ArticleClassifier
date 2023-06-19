@@ -1,22 +1,17 @@
 """This file contains the pipeline for training and evaluating the GCN on the data."""
-import os
-import sys
 import gc
 import logging
-from typeguard import typechecked
+import sys
 
 import matplotlib.pyplot as plt
-import torch
-
 import optuna
-from torch_geometric.utils.convert import from_networkx
+import torch
 
 from src.general.settings import Configuration
 
 sys.path.append("/home/jovyan/20230406_ArticleClassifier/ArticleClassifier")
 
 from src.general.data_classes import Experiment
-from src.models.classification_head_training import train_classification_head
 
 import os
 
@@ -25,7 +20,6 @@ os.environ['LIGHTGBM_EXEC'] = '~/.conda/envs/articleclassifier/lib/python3.9/sit
 
 sys.path.append(
     os.path.abspath(os.path.join(os.path.dirname('data_loader.py'), os.path.pardir)))
-from src.data.data_loader import DataLoader
 
 from src.run_model import get_all_data, run_model_configuration
 
@@ -185,13 +179,6 @@ if __name__ == '__main__':
 
     # Setting the threshold of logger to DEBUG
     logger.setLevel(logging.INFO)
-
-#     # run prediction and evaluation with model configuration as specified
-#     run_model_configuration(exp_ids, all_torch_data, label_columns.columns.difference(['pui']).tolist(),
-#                             graph_parameters, model_structure_parameters, data_parameters, pretrain_parameters,
-#                             class_head_params, num_minority_samples)
-    
-#     classification_head_optimization()
 
     for threshold in [1/750, 1/500, 1/250, 1/100, 1/50, 1/30, 1/20, 1/10, 1/5, 1/2]:
         threshold_experiment(threshold)
