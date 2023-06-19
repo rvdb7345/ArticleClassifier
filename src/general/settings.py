@@ -16,6 +16,7 @@ class Configuration():
         self.gnn_type = gnn_type
         self.class_head_settings = self.load_default_settings('src/default_settings/class_head_settings.yaml')
         self.data_settings = self.load_default_settings('src/default_settings/data_settings.yaml')[dataset]
+        self.data_settings['dataset'] = dataset
         self.file_locations = self.load_default_settings('src/default_settings/file_locations.yaml')[dataset]
         self.graph_settings = self.load_default_settings('src/default_settings/graph_settings.yaml')[gnn_type]
         self.pretrain_settings = self.load_default_settings('src/default_settings/pretrain_settings.yaml')
