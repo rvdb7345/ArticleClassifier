@@ -1,5 +1,4 @@
 """This file contains the pipeline for training and evaluating the GCN on the data."""
-import io
 import logging
 import pickle
 import random
@@ -8,20 +7,21 @@ from typing import Dict, List, Tuple, Union, Optional
 
 import pandas as pd
 import torch
-from torch_geometric.data import Data, DataLoader
+from torch_geometric.data import Data
 from torch_geometric.loader import DataLoader, NeighborLoader
 from torch_geometric.utils.convert import from_networkx
 
-sys.path.append("/home/jovyan/20230406_ArticleClassifier/ArticleClassifier")
+from src.general.settings import Configuration
 
+sys.path.append("/home/jovyan/20230406_ArticleClassifier/ArticleClassifier")
 
 from src.general.data_classes import Experiment
 from src.models.classification_head_training import train_classification_head
 
 import gc
 import os
-os.environ['LIGHTGBM_EXEC'] = '~/.conda/envs/articleclassifier/lib/python3.9/site-packages/lightgbm/lib_lightgbm.so'
 
+os.environ['LIGHTGBM_EXEC'] = '~/.conda/envs/articleclassifier/lib/python3.9/site-packages/lightgbm/lib_lightgbm.so'
 
 sys.path.append(
     os.path.abspath(os.path.join(os.path.dirname('data_loader.py'), os.path.pardir)))
@@ -29,101 +29,18 @@ from src.data.data_loader import DataLoader
 from src.data.data_processing import standardise_embeddings, convert_networkx_to_torch, get_mask, gather_set_indices, \
     drop_keyword_edges, configure_model_inputs
 from src.visualization.visualize import plot_metrics_during_training, plot_performance_per_label
-from src.general.utils import cc_path, save_results
+from src.general.utils import cc_path, save_results, wipe_memory
 
 from src.models.graph_training import evaluate_metrics, train_model, evaluate_metrics_batch
 
 from src.models.pipeline_configuration import get_loss_fn, get_optimizer, initiate_model
 from src.models.pretraining import pretrain
- 
-    
-def wipe_memory(optimizer): # DOES WORK
-    _optimizer_to(torch.device('cpu'), optimizer)
-    del optimizer
-    gc.collect()
-    torch.cuda.empty_cache()
 
-def _optimizer_to(device, optimizer):
-    for param in optimizer.state.values():
-        # Not sure there are any global tensors in the state dict
-        if isinstance(param, torch.Tensor):
-            param.data = param.data.to(device)
-            if param._grad is not None:
-                param._grad.data = param._grad.data.to(device)
-        elif isinstance(param, dict):
-            for subparam in param.values():
-                if isinstance(subparam, torch.Tensor):
-                    subparam.data = subparam.data.to(device)
-                    if subparam._grad is not None:
-                        subparam._grad.data = subparam._grad.data.to(device)
 
 # Creating an object
 logger = logging.getLogger('articleclassifier')
 
 device = torch.device("cuda:0") if torch.cuda.is_available() else torch.device("cpu")
-
-ALL_MODEL_PARAMETERS = {
-    "GAT": {
-        'embedding_size': 256,
-        'hidden_channels': 16,
-        'heads': 4,
-        'num_conv_layers': 1,
-        'dropout': 0.1
-    },
-#     "GAT": {
-#         'embedding_size': 512,
-#         'hidden_channels': 128,
-#         'heads': 4,
-#         'num_conv_layers': 1,
-#         'dropout': 0.0
-#     },
-    "GAT_label": {
-        'embedding_size': 256,
-        'hidden_channels':16,
-        'heads': 2,
-        'num_conv_layers': 2,
-        'dropout': 0.1
-    },
-    "GraphTransformer": {
-        'hidden_channels': 32,
-        'heads': 8
-    },
-    "GCN": {
-        'embedding_size': 256,
-        'hidden_channels': 64,
-        'num_conv_layers': 1,
-        'dropout': 0.1
-    },
-    "SAGE": {
-        'hidden_channels': 32,
-        'heads': 4
-    },
-    "dualGAT": {
-        'hidden_channels': 16,
-        'heads': 4,
-        'embedding_size': 256,
-        'num_conv_layers': 1,
-        'dropout': 0.1
-    },
-    "dualGCN": {
-        'embedding_size': 256,
-        'hidden_channels': 64,
-        'num_conv_layers': 1,
-        'dropout': 0.1
-    },
-    "GIN": {
-        'embedding_size': 128,
-        'hidden_channels': 64,
-        'num_conv_layers': 3
-    }
-}
-
-class CPU_Unpickler(pickle.Unpickler):
-    def find_class(self, module, name):
-        if module == 'torch.storage' and name == '_load_from_bytes':
-            return lambda b: torch.load(io.BytesIO(b), map_location='cpu')
-        else: return super().find_class(module, name)
-
 
 def get_all_data(data_parameters: Dict[str, Union[str, int, float]]) -> Tuple[Dict[str, Data], pd.DataFrame]:
     """
@@ -344,11 +261,7 @@ def evaluate_graph_model(model: torch.nn.Module,
 def run_model_configuration(exp_ids: Experiment,
                             all_torch_data: Dict[str, Data],
                             labels: List[str],
-                            graph_parameters: Dict[str, any],
-                            model_structure_parameters: Dict[str, any],
-                            data_parameters: Dict[str, any],
-                            pretrain_parameters: Dict[str, any],
-                            lgbm_params: Dict[str, any],
+                            settings: Configuration,
                             use_pretrain: bool = False,
                             only_graph: bool = False,
                             load_trained_model: Optional[str] = None,
@@ -360,12 +273,7 @@ def run_model_configuration(exp_ids: Experiment,
         exp_ids (Experiment): The experiment ID.
         all_torch_data (Dict[str, Data]): Dictionary containing PyTorch Geometric Data objects.
         labels (List[str]): Label names.
-        graph_parameters (Dict[str, any]): Dictionary containing graph model parameters.
-        model_structure_parameters (Dict[str, any]): Dictionary containing model structure parameters.
-        data_parameters (Dict[str, any]): Dictionary containing data parameters.
-        pretrain_parameters (Dict[str, any]): Dictionary containing pretraining parameters.
-        lgbm_params (Dict[str, any]): Dictionary containing LightGBM classifier parameters.
-        num_minority_samples (int): The number of minority samples to generate.
+        settings (Configuration): Configuration object with all settings
         use_pretrain (bool): pretrain the graph network.
         only_graph (bool): only train the graph network.
         only_graph (bool): only train the classification head.
@@ -373,16 +281,16 @@ def run_model_configuration(exp_ids: Experiment,
     
     # select model data
     logger.info('Configurating model inputs...')
-    data, data_inputs = configure_model_inputs(all_torch_data, data_parameters['data_type_to_use'])
+    data, data_inputs = configure_model_inputs(all_torch_data, settings.data_settings['data_type_to_use'])
     
     # train the graph model
     if load_trained_model is None:
         # set up model
         logger.info('Initiating model...')
         model = initiate_model(
-            graph_parameters['gnn_type'],
-            model_structure_parameters,
-            num_features=all_torch_data[data_parameters['data_type_to_use'][0]].x.shape[1],
+            settings.gnn_type,
+            settings.graph_settings,
+            num_features=all_torch_data[settings.data_settings['data_type_to_use'][0]].x.shape[1],
             num_labels=len(labels)
         )
         model.to(device)
@@ -390,180 +298,102 @@ def run_model_configuration(exp_ids: Experiment,
         # do unsupervised pretraining
         if use_pretrain:
             logger.info('Pretraining model...')
-            model = pretrain(model, all_torch_data[data_parameters['data_type_to_use'][0]], data_inputs,
-                             pretrain_parameters)
+            model = pretrain(model, all_torch_data[settings.data_settings['data_type_to_use'][0]], data_inputs,
+                             settings.pretrain_settings)
             torch.save(model, cc_path(f'models/pretrained_graphs/{exp_ids.run_id}_pretrained.pt'))
 
         # do supervised training
         logger.info('Training graph models on labels...')
-        optimizer = get_optimizer(graph_parameters, model.parameters())
-        criterion = get_loss_fn(graph_parameters)
+        optimizer = get_optimizer(settings.graph_training_settings, model.parameters())
+        criterion = get_loss_fn(settings.graph_training_settings)
 
         # dual networks can not use mini-batches yet
-        if 'dual' in graph_parameters['gnn_type']:
+        if 'dual' in settings.gnn_type:
             use_batches = False
         else:
             use_batches = True
-        
+
         scheduler = None
-        best_model, all_metrics, loss_all = train_model(model, data, graph_parameters, optimizer, scheduler, criterion,
+        best_model, all_metrics, loss_all = train_model(model, data, settings.graph_training_settings, optimizer,
+                                                        scheduler, criterion,
                                                         use_batches=use_batches,
-                                                        data_type_to_use=data_parameters['data_type_to_use'],
+                                                        data_type_to_use=settings.data_settings['data_type_to_use'],
                                                         all_torch_data=all_torch_data)
 
         torch.save(best_model, cc_path(f'models/supervised_graphs/{exp_ids.run_id}_supervised.pt'))
 
         logger.info('Evaluating model...')
-        end_metrics = evaluate_graph_model(best_model, data, all_metrics, graph_parameters['gnn_type'], loss_all, exp_ids,
+        end_metrics = evaluate_graph_model(best_model, data, all_metrics, settings.gnn_type, loss_all, exp_ids,
                                            labels, use_batches)
 
         # return the results already if we only want the graph
         if only_graph:
-            save_results(exp_ids, end_metrics, graph_parameters, {}, pretrain_parameters, data_parameters,
-                 {}, model_structure_parameters, labels=labels, storage_file_path='model_log.csv')
-            del model, best_model, data, all_torch_data, 
+            save_results(exp_ids, end_metrics, settings.graph_training_settings, {}, settings.pretrain_settings,
+                         settings.data_settings,
+                         {}, settings.graph_settings, labels=labels, storage_file_path='model_log.csv')
+            del model, best_model, data, all_torch_data,
             torch.cuda.empty_cache()
             gc.collect()
             wipe_memory(optimizer)
-    
+
             return end_metrics
     else:
         logger.info(f'Using model from run id: {load_trained_model}')
         best_model = torch.load(cc_path(f'models/supervised_graphs/{load_trained_model}_supervised.pt'), map_location=torch.device(device))
-        end_metrics = {'train': {'Macro F1 score': 0, 'Macro precision': 0, 'Macro recall': 0, 'Micro F1 score': 0, 'Micro precision': 0, 'Micro recall': 0, 'F1 score': [], 'Precision': [], 'Recall': []},
-                       'val': {'Macro F1 score': 0, 'Macro precision': 0, 'Macro recall': 0, 'Micro F1 score': 0, 'Micro precision': 0, 'Micro recall': 0, 'F1 score': [], 'Precision': [], 'Recall': []},
-                       'test': {'Macro F1 score': 0, 'Macro precision': 0, 'Macro recall': 0, 'Micro F1 score': 0, 'Micro precision': 0, 'Micro recall': 0, 'F1 score': [], 'Precision': [], 'Recall': []}
-                      }
-        model_structure_parameters['used_gnn'] = load_trained_model
-
+        end_metrics = {'train': {'Macro F1 score': 0, 'Macro precision': 0, 'Macro recall': 0, 'Micro F1 score': 0,
+                                 'Micro precision': 0, 'Micro recall': 0, 'F1 score': [], 'Precision': [],
+                                 'Recall': []},
+                       'val': {'Macro F1 score': 0, 'Macro precision': 0, 'Macro recall': 0, 'Micro F1 score': 0,
+                               'Micro precision': 0, 'Micro recall': 0, 'F1 score': [], 'Precision': [], 'Recall': []},
+                       'test': {'Macro F1 score': 0, 'Macro precision': 0, 'Macro recall': 0, 'Micro F1 score': 0,
+                                'Micro precision': 0, 'Micro recall': 0, 'F1 score': [], 'Precision': [], 'Recall': []}
+                       }
+        settings.graph_settings['used_gnn'] = load_trained_model
 
     logger.info('Training classification head...')
-    final_clf_head_metrics = train_classification_head(best_model, data, data_inputs, data_parameters['num_minority_samples'], lgbm_params,
+    final_clf_head_metrics = train_classification_head(best_model, data, data_inputs,
+                                                       settings.data_settings['num_minority_samples'],
+                                                       settings.class_head_settings,
                                                        exp_ids, opt_trial)
 
     logger.info('Saving results...')
     print("labels before we enter the save results function: ", labels)
-    save_results(exp_ids, end_metrics, graph_parameters, lgbm_params, pretrain_parameters, data_parameters,
-                 final_clf_head_metrics, model_structure_parameters, labels=labels, storage_file_path='model_log.csv')
-    
+    save_results(exp_ids, end_metrics, settings.graph_training_settings, settings.class_head_settings,
+                 settings.pretrain_settings, settings.data_settings,
+                 final_clf_head_metrics, settings.graph_settings, labels=labels, storage_file_path='model_log.csv')
+
     return final_clf_head_metrics
 
 
-def run_single_model():
+def run_single_model(dataset, gnn_type):
     exp_ids = Experiment()
-    
+    settings = Configuration(dataset, gnn_type)
+
     # get all data
-    all_torch_data, label_columns = get_all_data(data_parameters)
+    all_torch_data, label_columns = get_all_data(settings.data_settings)
     print('we have loaded all data.')
 
     # run prediction and evaluation with model configuration as specified
     run_model_configuration(exp_ids, all_torch_data, label_columns.columns.difference(['pui']).tolist(),
-                            graph_parameters, model_structure_parameters, data_parameters, pretrain_parameters,
-                            class_head_params, use_pretrain=False, only_graph=False)
-
+                            settings, use_pretrain=False, only_graph=False)
 
 
 if __name__ == '__main__':
+    dataset = 'canary'
+    gnn_type = 'GAT'
     exp_ids = Experiment()
-    
+    settings = Configuration(dataset, gnn_type)
+
     # Setting the threshold of logger to DEBUG
     logger.setLevel(logging.INFO)
-
-    # set data parameters
-#     data_parameters = {
-#         'subsample_size': 56337,
-#         'total_dataset_size': 56337,
-#         'data_type_to_use': ['keyword'],
-#         'embedding_type': 'scibert',
-#         'edge_weight_threshold': 0.0149254,
-#         'dataset': 'canary',
-#         'network_availability': ['keyword', 'author']
-#     }
-    
-    data_parameters = {
-        'subsample_size': 33671,
-        'total_dataset_size': 33671,
-        'data_type_to_use': ['keyword'],
-        'embedding_type': 'label_specific',
-        'edge_weight_threshold': 1/43,
-        'num_minority_samples': 2677,
-        'dataset': 'litcovid',
-        'network_availability': ['keyword']
-    }
-    
-    
-
-    # set graph parameters
-    graph_parameters = {
-        'gnn_type': 'GAT',
-        'graph_optimizer': 'adam',
-        'graph_lr': 0.00001,
-        'graph_weight_decay': 1e-4,
-        'graph_loss': 'BCELoss',
-        'graph_fl_gamma': 2.8,
-        'graph_fl_alpha': 0.25,
-        'graph_num_epochs': 1000,
-        'scheduler': None
-    }
 
     # just for setting them if no pretraining happens
     use_pretrain = False
 
-    if use_pretrain:
-        pretrain_parameters = {
-            'pretrain_epochs': 1300,
-            'pretrain_lr':  0.00001,
-            'pretrain_weight_decay': 1e-4,
-            'pretrain_optimizer': 'adam',
-            'pretrain_loss': 'BCEWithLogits'
-        }
-    else:
-        pretrain_parameters = {}
-
-    # settings for the classification head
-    # class_head_params = {
-    #     'n_estimators': 700,
-    #     'is_unbalance': True,
-    #     'n_jobs': -1,
-    #     'learning_rate': 0.01,
-    #     'subsample': 0.9,
-    #     'reg_alpha': 0.1,
-    #     'reg_lambda': 0.1,
-    #     'colsample_bytree': 0.8,
-    #     'boosting_type': 'dart',
-    #     'device': 'cuda',
-    # }
-
-    
-    class_head_params = {
-        'silent': 1, 
-        'booster': 'gbtree', 
-        'lambda': 0.4277251324901281, 
-        'alpha': 0.0886997407398398, 
-        'n_estimators': 473, 
-        'subsample': 0.25629862488570715, 
-        'learning_rate': 0.016385565188229333, 
-        'max_bin': 15, 
-        'colsample_bytree': 0.4540290852788586, 
-        'objective': 'binary:logistic', 
-        'tree_method': 'gpu_hist', 
-        'gpu_id': 0, 
-        'max_depth': 4, 
-        'eta': 0.8796479952716122, 
-        'gamma': 0.27077195757296557, 
-        'grow_policy': 'lossguide'
-    }
-
-    
-
-    # current model setup
-    model_structure_parameters = ALL_MODEL_PARAMETERS[graph_parameters['gnn_type']]
-
     # get all data
-    all_torch_data, label_columns = get_all_data(data_parameters)
+    all_torch_data, label_columns = get_all_data(settings.data_settings)
 
     # run prediction and evaluation with model configuration as specified
     run_model_configuration(exp_ids, all_torch_data, label_columns.columns.difference(['pui']).tolist(),
-                            graph_parameters, model_structure_parameters, data_parameters, pretrain_parameters,
-                            class_head_params, use_pretrain=use_pretrain, only_graph=False, 
+                            settings, use_pretrain=use_pretrain, only_graph=False,
                             load_trained_model=None)

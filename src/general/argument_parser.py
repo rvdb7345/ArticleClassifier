@@ -32,8 +32,8 @@ def create_argument_parser() -> argparse.ArgumentParser:
     # run
     parser.add_argument('-m', '--model_id', type=str, default=None,
                         help=f'Optional model selection by id default: none')
-    parser.add_argument('--run_model', type=float, default=False,
-                        help='Run a single model training and evaluation')
+    parser.add_argument('--run_model', type=str, default=None, nargs=2,
+                        help='Run a single model training and evaluation (e.g. --run_model [dataset] [gnn_type]')
 
     # optimisation
     parser.add_argument('-o', '--optimize', type=str, default=None,

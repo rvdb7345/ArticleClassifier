@@ -1,0 +1,11 @@
+---
+graph_training:
+  'graph_optimizer': adam,
+  'graph_lr': 0.00001,
+  'graph_weight_decay': 1e-4,
+  'graph_loss': BCELoss,
+  'graph_fl_gamma': 2.8,
+  'graph_fl_alpha': 0.25,
+  'graph_num_epochs': 1000,
+  'scheduler': None
+...

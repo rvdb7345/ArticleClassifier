@@ -1,16 +1,23 @@
 """This file defines the utility functions."""
-
+import gc
+import io
 import os
+import pickle
 import sys
-import src.general.global_variables as gv
 from typing import List
 
-sys.path.append(gv.PROJECT_PATH)
+import torch
+
 sys.path.append("/home/jovyan/20230406_ArticleClassifier/ArticleClassifier")
+
+import src.general.global_variables as gv
+
+sys.path.append(gv.PROJECT_PATH)
 
 from src.general.data_classes import Experiment
 
 import pandas as pd
+
 
 def cc_path(file_path: str) -> str:
     """Create absolute path."""
@@ -83,3 +90,33 @@ def save_results(exp_ids: Experiment, end_metrics: dict, graph_parameters: dict,
 
     results_df = pd.concat([results_df, pd.Series(results).to_frame().T], ignore_index=True)
     results_df.to_csv(cc_path(f'reports/model_results/{storage_file_path}'), index=False)
+
+
+def wipe_memory(optimizer):  # DOES WORK
+    _optimizer_to(torch.device('cpu'), optimizer)
+    del optimizer
+    gc.collect()
+    torch.cuda.empty_cache()
+
+
+def _optimizer_to(device, optimizer):
+    for param in optimizer.state.values():
+        # Not sure there are any global tensors in the state dict
+        if isinstance(param, torch.Tensor):
+            param.data = param.data.to(device)
+            if param._grad is not None:
+                param._grad.data = param._grad.data.to(device)
+        elif isinstance(param, dict):
+            for subparam in param.values():
+                if isinstance(subparam, torch.Tensor):
+                    subparam.data = subparam.data.to(device)
+                    if subparam._grad is not None:
+                        subparam._grad.data = subparam._grad.data.to(device)
+
+
+class CPU_Unpickler(pickle.Unpickler):
+    def find_class(self, module, name):
+        if module == 'torch.storage' and name == '_load_from_bytes':
+            return lambda b: torch.load(io.BytesIO(b), map_location='cpu')
+        else:
+            return super().find_class(module, name)

@@ -40,8 +40,8 @@ def main():
     # redirect to correct process
 
     # do a model run
-    if args.run_model:
-        run_single_model()
+    if args.run_model is not None:
+        run_single_model(args.run_model[0], args.run_model[1])
 
     # optimize the models
     if args.optimize is not None:
