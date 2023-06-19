@@ -14,7 +14,7 @@ Training a new model is very straightforward. After setting the preferred settin
 run:
 
 ```commandline
-python main.py --run_model
+python main.py --run_model 'canary' 'GAT'
 ```
 
 ## Running a trained model
@@ -22,5 +22,5 @@ python main.py --run_model
 In case you want to rerun a trained model, you can add the id of the model:
 
 ```commandline
-python main.py --run_model --model_id model_id
+python main.py --run_model 'litcovid' 'GAT' --model_id model_id
 ```
