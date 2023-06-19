@@ -148,6 +148,7 @@ def train_classification_head(model: torch.nn.Module,
         Dict[str, float]: A dictionary containing the computed evaluation metrics for the classification head.
     """
     # create graph embeddings
+    data_inputs = [d.to(device) for d in data_inputs]
     graph_created_embeddings = model.forward(*data_inputs, return_embeddings=True)
 
     X_train_graph_embeddings = graph_created_embeddings[data[0].train_mask].detach().cpu().numpy().astype(np.float16)

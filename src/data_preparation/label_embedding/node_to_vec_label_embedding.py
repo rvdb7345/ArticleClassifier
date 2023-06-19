@@ -9,7 +9,8 @@ from src.general.utils import cc_path
 
 
 def node2vec_label_embedding(dataset):
-    with open(cc_path(f'data/processed/{dataset}/{dataset}_label_network_weighted.pickle'), 'wb') as file:
+    with open(cc_path(f'data/processed/{dataset}/{dataset}_label_network_weighted.pickle'), 'rb') as file:
+        print(file)
         label_graph = pickle.load(file)
 
     # the embedding of the labels utilises different hyperparameters based on the dataset we are working wit

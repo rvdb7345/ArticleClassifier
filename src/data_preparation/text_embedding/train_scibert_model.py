@@ -143,7 +143,7 @@ def train(model, dataloaders, optimizer, scheduler, loss_fn, num_labels, epochs=
         if evaluation == True:
             # After the completion of each training epoch, measure the model's performance
             # on our validation set.
-            val_loss, val_accuracy, _ = evaluate(model, dataloaders['val'])
+            val_loss, val_accuracy, _ = evaluate(model, dataloaders['val'], loss_fn, num_labels)
 
             # Print performance over the entire training data
             time_elapsed = time.time() - t0_epoch
@@ -228,7 +228,8 @@ def accuracy_thresh(y_pred, y_true, thresh: float = 0.5, sigmoid: bool = True):
     y_pred[(y_pred < thresh)] = 0
     return f1_score(y_true.byte().cpu(), y_pred.cpu(), average='micro'), f1_score(y_true.byte().cpu(), y_pred.cpu(),
                                                                                   average='macro')
-    # return np.mean(((y_pred>thresh).float()==y_true.float()).float().cpu().numpy(), axis=1).sum()
+    
+    
 def scibert_finetuning(dataset_to_run):
     # Load the pre-trained SciBERT tokenizer and model
     tokenizer = BertTokenizer.from_pretrained('allenai/scibert_scivocab_uncased')
@@ -244,6 +245,9 @@ def scibert_finetuning(dataset_to_run):
         num_labels = 7
     else:
         assert False, f'{dataset_to_run} not recognized as known dataset.'
+        
+    label_columns = label_columns.sample(1000)
+    processed_df = processed_df[processed_df.pui.isin(label_columns.pui.tolist())]
 
     dataloaders, datasets = generate_dataloader_objects(tokenizer, label_columns, processed_df, puis,
                                                         batch_size=32)
@@ -253,7 +257,7 @@ def scibert_finetuning(dataset_to_run):
     best_model = train(bert_classifier, dataloaders, optimizer, scheduler, loss_fn, num_labels,
                        epochs=15, evaluation=True, dataset_name=dataset_to_run)
 
-    torch.save(best_model.bert, cc_path(f'models/embedders/litcovid_finetuned_bert_20e_3lay_meta.pt'))
+    torch.save(best_model.bert, cc_path(f'models/embedders/{dataset_to_run}_finetuned_bert_20e_3lay_meta.pt'))
 
 if __name__ == '__main__':
     dataset_to_run = 'litcovid'

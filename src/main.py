@@ -1,7 +1,8 @@
 """This file executes the right process."""
 import sys
+sys.path.append("/home/jovyan/20230406_ArticleClassifier/ArticleClassifier")
 
-from src.data_preparation.create_data_split import create_train_val_test_split
+# from src.data_preparation.create_data_split import create_train_val_test_split
 from src.data_preparation.label_embedding.node_to_vec_label_embedding import node2vec_label_embedding
 from src.data_preparation.network_generation.create_author_networks import create_author_network
 from src.data_preparation.network_generation.create_keyword_networks import create_keyword_network
@@ -10,8 +11,6 @@ from src.data_preparation.text_embedding.inference_bert_xml_model import inferen
 from src.data_preparation.text_embedding.inference_scibert_model import generate_scibert_embeddings
 from src.data_preparation.text_embedding.train_bert_xml_model import train_xml_embedder
 from src.data_preparation.text_embedding.train_scibert_model import scibert_finetuning
-
-sys.path.append("/home/jovyan/20230406_ArticleClassifier/ArticleClassifier")
 
 from src.general.argument_parser import create_argument_parser
 from src.general.logger_creator import create_logger
@@ -33,15 +32,17 @@ def main():
     logger = create_logger(args.verbosity)
 
     logger.info(f"Verbosity level: {args.verbosity}")
-    if args.model_id is not None:
-        logger.info(f"Model ID: {args.model_id}")
-    else:
-        logger.info("Model ID not provided - creating new model.")
+
 
     # redirect to correct process
 
     # do a model run
     if args.run_model is not None:
+        if args.model_id is not None:
+            logger.info(f"Model ID: {args.model_id}")
+        else:
+            logger.info("Model ID not provided - creating new model.")
+        
         run_single_model(args.run_model[0], args.run_model[1])
 
     # optimize the models
@@ -89,7 +90,7 @@ def main():
     if args.train_scibert is not None:
         scibert_finetuning(args.train_scibert)
     if args.inference_scibert is not None:
-        generate_scibert_embeddings(args.infer_scibert)
+        generate_scibert_embeddings(args.inference_scibert)
 
     if args.train_xml_embedder is not None:
         train_xml_embedder(args.train_xml_embedder)

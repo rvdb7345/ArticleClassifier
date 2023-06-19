@@ -86,11 +86,11 @@ def load_canary_data():
 
 
     puis = {}
-    with open(cc_path(f'data/train_indices.txt')) as f:
+    with open(cc_path(f'data/canary_train_indices.txt')) as f:
         puis['train'] = f.read().splitlines()
-    with open(cc_path(f'data/val_indices.txt')) as f:
+    with open(cc_path(f'data/canary_val_indices.txt')) as f:
         puis['val'] = f.read().splitlines()
-    with open(cc_path(f'data/test_indices.txt')) as f:
+    with open(cc_path(f'data/canary_test_indices.txt')) as f:
         puis['test'] = f.read().splitlines()
 
     return label_columns, processed_df, puis
@@ -162,8 +162,8 @@ def generate_dataloader_objects(tokenizer, label_columns, processed_df, puis, ba
         dataloader, tensor_data = generate_dataloader(bert_preprocessor, processed_df, label_columns,
                                                       puis[dataset_name], batch_size)
 
-    datasets[dataset_name] = tensor_data
-    dataloaders[dataset_name] = dataloader
+        datasets[dataset_name] = tensor_data
+        dataloaders[dataset_name] = dataloader
 
     return dataloaders, datasets
 

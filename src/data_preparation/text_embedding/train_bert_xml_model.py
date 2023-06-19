@@ -27,8 +27,6 @@ device = torch.device("cuda:0") if torch.cuda.is_available() else torch.device("
 MAX_LEN = 512
 
 
-
-
 def get_label_embeddings(path, embedding_size):
     label_emb = np.zeros(embedding_size)
     label_index_mapping = {}

@@ -81,6 +81,7 @@ def evaluate_metrics_batch(model: torch.nn.Module, data: list[Data], dataset: st
         
         for batch_data in loaders[0]:
             data_inputs = [batch_data.x.float(), batch_data.edge_index]
+            data_inputs = [d.to(device) for d in data_inputs]
 
             pred = model(*data_inputs)
 
@@ -273,7 +274,7 @@ def train_batch(model, loaders, optimizer, scheduler, criterion, graph_optimizer
             optimizer.zero_grad()
 
         out = model(*data_inputs)
-        loss = criterion(out[:batch_data[0].batch_size], batch_data[0].y[:batch_data[0].batch_size])
+        loss = criterion(out[:batch_data[0].batch_size], batch_data[0].y[:batch_data[0].batch_size].to(device))
 
         loss.backward()
         optimizer.step()

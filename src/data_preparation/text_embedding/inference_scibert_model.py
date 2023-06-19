@@ -84,7 +84,7 @@ def generate_scibert_embeddings(dataset_to_run):
     embedded_df = scibert_embedding(data_for_embedding, embedding_dim, model, tokenizer)
 
     embedded_df.to_csv(
-        cc_path(f'data/processed/litcovid/litcovid_embeddings_{embedding_type}_finetuned_20230529_meta_stopwords.csv'),
+        cc_path(f'data/processed/litcovid/litcovid_embeddings_{embedding_type}_finetuned_20230529_meta_stopwordsasdfasda.csv'),
         index=False)
 
 

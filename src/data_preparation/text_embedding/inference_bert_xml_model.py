@@ -15,8 +15,11 @@ from src.data_preparation.text_embedding.bert_utils import BERTPreprocessor
 
 from src.data_preparation.text_embedding.train_bert_xml_model import \
     load_canary_data, generate_canary_embedding_text, load_litcovid_data, generate_litcovid_embedding_text
+from src.data_preparation.text_embedding.embedding_models.xml_model import Hybrid_XML
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
+import __main__
+setattr(__main__, "Hybrid_XML", Hybrid_XML)
 
 def inference_xml_embedder(dataset_to_run):
     best_model = torch.load(cc_path(f'models/xml_embedding/litcovid_xlm_embedder_20230518_all_data.pt'),
@@ -25,12 +28,12 @@ def inference_xml_embedder(dataset_to_run):
     emb_batch_size = 256
 
     if dataset_to_run == 'canary':
-        processed_df, train_puis, val_puis, test_puis = load_canary_data()
+        label_columns, processed_df, puis = load_canary_data()
         processed_df = generate_canary_embedding_text(processed_df)
         num_labels = 52
 
     elif dataset_to_run == 'litcovid':
-        processed_df, train_puis, val_puis, test_puis = load_litcovid_data()
+        label_columns, processed_df, puis = load_litcovid_data()
         processed_df = generate_litcovid_embedding_text(processed_df)
         num_labels = 7
 

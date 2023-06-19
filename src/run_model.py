@@ -54,7 +54,7 @@ def get_all_data(data_parameters: Dict[str, Union[str, int, float]]) -> Tuple[Di
                                               author, keyword, and label networks, and a DataFrame of label columns.
     """
     # load all the data
-    print('Start loading data...')
+    logger.info('Start loading data...')
     
     if data_parameters['dataset'] == 'canary':
         loc_dict = {
@@ -100,11 +100,9 @@ def get_all_data(data_parameters: Dict[str, Union[str, int, float]]) -> Tuple[Di
             embedding_df = standardise_embeddings(embedding_df)
         elif data_parameters['embedding_type'] == 'label_specific':
             embedding_df = data_loader.load_xml_embeddings()
-            print('loaded embeddings')
-#             embedding_df = standardise_embeddings(embedding_df)
-            print('standardise embeddings')
-
-        print('embeddings are loaded')
+            logger.debug('loaded embeddings')
+            embedding_df = standardise_embeddings(embedding_df)
+            logger.debug('standardise embeddings')
             
         # process the labels we want to select now
         label_columns = processed_df.loc[:, ~processed_df.columns.isin(
@@ -115,8 +113,6 @@ def get_all_data(data_parameters: Dict[str, Union[str, int, float]]) -> Tuple[Di
                                                                           label_columns.columns.difference(['pui'])].astype(
             str)
         
-        print(label_columns)
-
         keyword_network = drop_keyword_edges(keyword_network, data_parameters['edge_weight_threshold'])
         
         available_nodes = set(embedding_df.pui.to_list())
@@ -126,10 +122,9 @@ def get_all_data(data_parameters: Dict[str, Union[str, int, float]]) -> Tuple[Di
             available_nodes = available_nodes & set(keyword_network.nodes)
 
         available_nodes = list(available_nodes)
-        print(len(available_nodes))
         sampled_nodes = random.sample(available_nodes, data_parameters['subsample_size'])
         
-        print('subsampling the graphs')
+        logger.info('subsampling the graphs')
         if 'author' in data_parameters['network_availability']:
             sampled_author = author_networkx.subgraph(sampled_nodes).copy()
             utility_network = sampled_author
@@ -137,7 +132,7 @@ def get_all_data(data_parameters: Dict[str, Union[str, int, float]]) -> Tuple[Di
             sampled_keyword = keyword_network.subgraph(sampled_nodes).copy()
             utility_network = sampled_keyword
         
-        print('gaterhing the indices')
+        logger.info('gathering the indices')
         train_indices, val_indices, test_indices, node_label_mapping = \
             gather_set_indices(data_parameters['subsample_size'],
                                data_parameters['total_dataset_size'],
@@ -149,7 +144,7 @@ def get_all_data(data_parameters: Dict[str, Union[str, int, float]]) -> Tuple[Di
         val_mask = get_mask(val_indices, len(utility_network))
         test_mask = get_mask(test_indices, len(utility_network))
         
-        print('converting to torch networks')
+        logger.info('converting to torch networks')
         if 'author' in data_parameters['network_availability']:
             author_data = convert_networkx_to_torch(sampled_author, embedding_df, label_columns, train_mask, val_mask,
                                                     test_mask,
@@ -158,12 +153,12 @@ def get_all_data(data_parameters: Dict[str, Union[str, int, float]]) -> Tuple[Di
             keyword_data = convert_networkx_to_torch(sampled_keyword, embedding_df, label_columns, train_mask, val_mask,
                                                      test_mask,
                                                      node_label_mapping, data_parameters['embedding_type'])
-        print('torch networks are generated')
+        logger.info('torch networks are generated')
 
         # author_data.to(device)
         # keyword_data.to(device)
 
-        print('creating the dictionary')
+        logger.info('creating the dictionary')
         all_torch_data = {
             'label': label_data
         }
@@ -172,7 +167,7 @@ def get_all_data(data_parameters: Dict[str, Union[str, int, float]]) -> Tuple[Di
         if 'keyword' in data_parameters['network_availability']:
             all_torch_data['keyword'] = keyword_data
         
-        print('saving the data')
+        logger.info('saving the data')
         with open(cc_path(f'data/processed/{data_parameters["dataset"]}/torch_networks_full_{data_parameters["edge_weight_threshold"]:.4f}_{data_parameters["subsample_size"]}_{data_parameters["embedding_type"]}.pickle'), 'wb') as handle:
             pickle.dump(all_torch_data, handle, protocol=pickle.HIGHEST_PROTOCOL)
         with open(cc_path(f'data/processed/{data_parameters["dataset"]}/labels.pickle'), 'wb') as handle:
@@ -186,8 +181,8 @@ def get_all_data(data_parameters: Dict[str, Union[str, int, float]]) -> Tuple[Di
         with open(cc_path(f'data/processed/{data_parameters["dataset"]}/labels.pickle'), 'rb') as handle:
             label_columns = pd.read_pickle(handle)
             
-    for key, value in all_torch_data.items():
-        all_torch_data[key] = all_torch_data[key].to(device)
+#     for key, value in all_torch_data.items():
+#         all_torch_data[key] = all_torch_data[key].to(device)
 
     return all_torch_data, label_columns
 
@@ -227,10 +222,10 @@ def evaluate_graph_model(model: torch.nn.Module,
             plot_metrics_during_training(all_metrics['train'][metric], all_metrics['val'][metric], all_metrics['test'][metric], loss_all,
                                          model_name=gnn_type, metric_name=metric,
                                          today=exp_ids.today, time=exp_ids.time)
-            print(f"The max {metric} value: ", max(all_metrics['test'][metric]))
+            logger.info(f"The max {metric} value: {max(all_metrics['test'][metric])}")
 
     # get the test accuracy
-    print('Evaluating model performance...')
+    logger.info('Evaluating model performance...')
     model.eval()
 
     end_metrics = {}
@@ -357,7 +352,7 @@ def run_model_configuration(exp_ids: Experiment,
                                                        exp_ids, opt_trial)
 
     logger.info('Saving results...')
-    print("labels before we enter the save results function: ", labels)
+    logger.debug("labels before we enter the save results function: ", labels)
     save_results(exp_ids, end_metrics, settings.graph_training_settings, settings.class_head_settings,
                  settings.pretrain_settings, settings.data_settings,
                  final_clf_head_metrics, settings.graph_settings, labels=labels, storage_file_path='model_log.csv')
@@ -371,7 +366,7 @@ def run_single_model(dataset, gnn_type):
 
     # get all data
     all_torch_data, label_columns = get_all_data(settings.data_settings)
-    print('we have loaded all data.')
+    logger.debug('we have loaded all data.')
 
     # run prediction and evaluation with model configuration as specified
     run_model_configuration(exp_ids, all_torch_data, label_columns.columns.difference(['pui']).tolist(),

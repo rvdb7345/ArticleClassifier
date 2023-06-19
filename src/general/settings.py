@@ -31,4 +31,5 @@ class Configuration():
 
 if __name__ == '__main__':
     dataset = 'canary'
-    config = Configuration(dataset)
+    gnn_type = 'GAT'
+    config = Configuration(dataset, gnn_type)
