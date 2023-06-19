@@ -29,7 +29,7 @@ from src.data.data_loader import DataLoader
 from src.data.data_processing import standardise_embeddings, convert_networkx_to_torch, get_mask, gather_set_indices, \
     drop_keyword_edges, configure_model_inputs
 from src.visualization.visualize import plot_metrics_during_training, plot_performance_per_label
-from src.general.utils import cc_path, save_results, wipe_memory
+from src.general.utils import cc_path, save_results, wipe_memory, CPU_Unpickler
 
 from src.models.graph_training import evaluate_metrics, train_model, evaluate_metrics_batch
 

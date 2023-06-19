@@ -16,7 +16,8 @@ sys.path.append("/home/jovyan/20230406_ArticleClassifier/ArticleClassifier")
 from src.general.argument_parser import create_argument_parser
 from src.general.logger_creator import create_logger
 
-from src.optuna_optimization import graph_optimization, classification_head_optimization, threshold_experiment
+from src.optuna_optimization import graph_optimization, classification_head_optimization, threshold_experiment, \
+    threshold_optimization
 from src.run_model import run_single_model
 from src.data_preparation.create_processed_dataset import process_canary_data, process_litcovid_data
 from src.data_preparation.parse_car_xml import parse_document_classification
@@ -45,14 +46,16 @@ def main():
 
     # optimize the models
     if args.optimize is not None:
-        if args.optimize == 'graph':
-            graph_optimization()
-        elif args.optimize == 'clf_head':
-            classification_head_optimization()
-        elif args.optimize == 'threshold_experiment':
+        if args.optimize[0] == 'graph':
+            graph_optimization(args.optimize[1], args.optimize[2])
+        elif args.optimize[0] == 'clf_head':
+            classification_head_optimization(args.optimize[1], args.optimize[2])
+        elif args.optimize[0] == 'threshold_optimization':
+            threshold_optimization(args.optimize[1], args.optimize[2])
+        elif args.optimize[0] == 'threshold_experiment':
             if args.pruning_threshold is None:
                 assert False, 'Pruning threshold argument not set. Please include --pruning_threshold [float]'
-            threshold_experiment(args.pruning_threshold)
+            threshold_experiment(args.pruning_threshold, args.optimize[1], args.optimize[2])
         else:
             assert False, f'Optimization method: {args.optimize} not defined.'
 
