@@ -94,12 +94,16 @@
 <ul>
 <li>GNN (<code>graph</code>)</li>
 <li>Classification head (<code>clf_head</code>)</li>
-<li>Keyword pruning threshold (<code>threshold_experiment</code>)</li>
+<li>Keyword pruning threshold (<code>threshold_optimization</code>)</li>
 </ul>
-<p>All separate components can be optimised using the <code>--optimize</code> flag. E.g.:</p>
-<pre><code class="language-commandline">python main.py --optimize 'clf_head'
+<p>All separate components can be optimised using the <code>--optimize</code> flag and take three arguments: optimization component,
+dataset, gnn_type</p>
+<p>E.g.:</p>
+<pre><code class="language-commandline">python main.py --optimize 'clf_head' 'canary' 'GAT'
 </code></pre>
-<p>The additional parameters are those set in the settings files.</p>
+<p>The additional parameters are those set in the default settings files.</p>
+<p>There is a manual optimization for the threshold available as well, specified with <code>threshold_experiment</code> useful for
+evaluating the effect of the threshold for specific ranges.</p>
               
             </div>
           </div><footer>
