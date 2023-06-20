@@ -2,8 +2,9 @@
 
 Welcome to the documentation of this project.
 
-This project focuses on multi-label classification of academic articles using GNNs and label-guided embeddings focused
-at mitigating the performance decrease result from strongly imbalanced labels.
+This project focuses on the multi-label classification of academic articles using GNNs and label-guided embeddings aimed
+at
+mitigating the performance decrease resulting from strongly imbalanced labels.
 
 The documentation will cover the different aspects of the project, namely:
 
@@ -15,6 +16,7 @@ The documentation will cover the different aspects of the project, namely:
 
 ## General Remarks
 
-This project was created as a 3-month Master Thesis project for the program Information Studies - Data Science.
-The project was in collaboration with Elsevier under the supervision of Bruno Martins and Chieling Yueh and Prof. Paul
+This project was created as a 3-month Master's Thesis project for the program Information Studies - Data Science.
+The project was done in collaboration with Elsevier under the supervision of Bruno Martins, Chieling Yueh and Prof. dr.
+Paul
 Groth. 
