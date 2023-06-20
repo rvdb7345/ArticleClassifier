@@ -1,4 +1,7 @@
+
 # Graph Neural Network Article Classification
+
+![ProjectLogo](docs/frontpagerounded.png)
 
 <div align="center">
 

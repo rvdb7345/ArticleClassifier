@@ -9,7 +9,9 @@ The choice not to run everything in one single go is based on memory usage and p
 However, if you are really set on running everything directly after each other, just create a simple bash script.
 This avoids memory issues and doesn't require adding python code.
 
-## Processing CAR data (```src/data_preparation/parse_car_xml.py```)
+### Processing CAR data
+
+(```src/data_preparation/parse_car_xml.py```)
 
 Applies to: ['canary']
 
@@ -21,7 +23,9 @@ Input files: ```data/raw/canary/original_xml_files/*.xml```
 
 Output files: ```data/processed/canary/all_articles_diff_labels.csv```
 
-## Processing text (```src/data_preparation/create_processed_dataset.py```)
+### Processing text
+
+(```src/data_preparation/create_processed_dataset.py```)
 
 Applies to: ['canary', 'litcovid']
 
@@ -37,7 +41,9 @@ Input files: raw csv files (e.g. ```data/processed/canary/all_articles_diff_labe
 
 Output files: ```f'data/processed/{dataset}/{dataset}_articles_cleaned_{today}.csv'```
 
-## Creating graph networks (```src/data_preparation/network_generation/create_{network_type}_networks.py```)
+### Creating graph networks
+
+(```src/data_preparation/network_generation/create_{network_type}_networks.py```)
 
 Applies to: ['canary', 'litcovid']
 
@@ -55,7 +61,9 @@ Input files: ```f'data/processed/{dataset}/{dataset}_articles_cleaned_{today}.cs
 
 Output files: ```f'data/processed/{dataset}/{network_type}_network.pickle'```
 
-## Generating a data split (```src/data_preparation/create_data_split.py```)
+### Generating a data split
+
+(```src/data_preparation/create_data_split.py```)
 
 Applies to: ['canary']
 
@@ -67,9 +75,11 @@ Command:
 python main.py --create_data_split dataset
 ```
 
-# Generating Embeddings
+## Generating Embeddings
 
-## Generate label embedding models (```src/data_preparation/label_embedding/node_to_vec_label_embedding.py```)
+### Generate label embedding models
+
+(```src/data_preparation/label_embedding/node_to_vec_label_embedding.py```)
 
 Applies to: ['canary', 'litcovid']
 
@@ -83,9 +93,11 @@ python main.py --embed_labels dataset
 
 Input files: ```f'data/processed/{dataset}/{dataset}_label_network_weighted.pickle'```
 
-## Training text embedding models
+### Training text embedding models
 
-### Finetuning SciBERT (```src/data_preparation/text_embedding/train_scibert_model.py```)
+#### Finetuning SciBERT
+
+(```src/data_preparation/text_embedding/train_scibert_model.py```)
 
 Applies to: ['canary', 'litcovid']
 
@@ -100,7 +112,9 @@ python main.py --train_scibert dataset
 
 Input files: ```f'data/processed/{dataset}/{dataset}_articles_cleaned_{today}.csv'```
 
-### Training SciBERT-LAHA (```src/data_preparation/text_embedding/train_bert_xml_model.py```)
+#### Training SciBERT-LAHA
+
+(```src/data_preparation/text_embedding/train_bert_xml_model.py```)
 
 Applies to: ['canary', 'litcovid']
 
@@ -115,9 +129,11 @@ python main.py --train_xml_embedder dataset
 
 Input files: ```f'data/processed/{dataset}/{dataset}_articles_cleaned_{today}.csv'```
 
-## Generate Text Embeddings
+### Generate Text Embeddings
 
-### SciBERT inference (```src/data_preparation/text_embedding/inference_scibert_model.py```)
+#### SciBERT inference
+
+(```src/data_preparation/text_embedding/inference_scibert_model.py```)
 
 Applies to: ['canary', 'litcovid']
 
@@ -132,7 +148,9 @@ python main.py --inference_scibert dataset
 
 Input files: ```f'data/processed/{dataset}/{dataset}_articles_cleaned_{today}.csv'```
 
-### SciBERT-LAHA inference (```src/data_preparation/text_embedding/inference_bert_xml_model.py```)
+#### SciBERT-LAHA inference
+
+(```src/data_preparation/text_embedding/inference_bert_xml_model.py```)
 
 Applies to: ['canary', 'litcovid']
 

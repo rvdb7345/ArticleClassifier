@@ -1,7 +1,18 @@
 site_name: Documentation GNN ArticleClassifier
+repo_url: https://github.com/rvdb7345/ArticleClassifier
+site_author: Robin van den Berg
+site_url: https://github.com/rvdb7345/ArticleClassifier
 
 theme:
-    name: readthedocs
+    palette:
+        primary: teal
+    name: material
+    logo: frontpagerounded.png
+    favicon: seethroughthesislogo.png
+
+plugins:
+    - social
+    - search
 
 nav:
     - Index: index.md
