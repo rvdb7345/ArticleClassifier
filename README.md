@@ -1,7 +1,4 @@
 # Graph Neural Network Article Classification
-Welcome to this project that opts to do multi-label classification of academic articles using GNNs! 
-
-For the documentation of the project, check out these GH pages: https://rvdb7345.github.io/ArticleClassifier/
 
 <div align="center">
 
@@ -13,3 +10,7 @@ For the documentation of the project, check out these GH pages: https://rvdb7345
 [![stars - ArticleClassifier](https://img.shields.io/github/stars/rvdb7345/ArticleClassifier?style=social)](https://github.com/rvdb7345/ArticleClassifier)
 [![forks - ArticleClassifier](https://img.shields.io/github/forks/rvdb7345/ArticleClassifier?style=social)](https://github.com/rvdb7345/ArticleClassifier)
 </div>
+
+Welcome to this project that opts to do multi-label classification of academic articles using GNNs! 
+
+For the documentation of the project, check out these GH pages: https://rvdb7345.github.io/ArticleClassifier/
