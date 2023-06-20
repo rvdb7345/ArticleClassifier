@@ -1,5 +1,7 @@
 # Employing GNNs for multi-label classification of biomedical articles
-<img style="float: right;" src="frontpagerounded.png">
+
+<img align="right" width="300" height="300" src="frontpagerounded.png">
+
 Welcome to the documentation of this project.
 
 This project focuses on the multi-label classification of academic articles using GNNs and label-guided embeddings aimed
@@ -13,6 +15,8 @@ The documentation will cover the different aspects of the project, namely:
 - [Preparing the data](preparing_data.md)
 - [Training a model](training.md)
 - [Optimising a model](optimization.md)
+
+<br clear="left"/>
 
 ## General Remarks
 
