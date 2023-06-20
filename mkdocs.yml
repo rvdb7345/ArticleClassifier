@@ -15,8 +15,8 @@ plugins:
     - search
 
 nav:
-    - Index: index.md
-    - Setting up: project_installation.md
+    - Weloce: welcome.md
+    - Setting Up: project_installation.md
     - Configuring Settings: settings.md
     - Data Preparation: preparing_data.md
     - Training: training.md
