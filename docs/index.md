@@ -1,5 +1,4 @@
 # Employing GNNs for multi-label classification of biomedical articles
-
 <img align="right" width="300" height="300" src="frontpagerounded.png">
 
 Welcome to the documentation of this project.

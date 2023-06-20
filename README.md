@@ -1,7 +1,6 @@
 
 # Graph Neural Network Article Classification
-
-![ProjectLogo](docs/frontpagerounded.png)
+<center><img align="center" src="docs/frontpagerounded.png"  width="30%" height="30%" ></center>
 
 <div align="center">
 
