@@ -9,13 +9,10 @@ theme:
     name: material
     logo: frontpagerounded.png
     favicon: seethroughthesislogo.png
-
 plugins:
-    - social
     - search
-
 nav:
-    - Weloce: welcome.md
+    - Welcome: index.md
     - Setting Up: project_installation.md
     - Configuring Settings: settings.md
     - Data Preparation: preparing_data.md
