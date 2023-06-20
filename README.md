@@ -1,6 +1,8 @@
 
 # Graph Neural Network Article Classification
-<center><img align="center" src="docs/frontpagerounded.png"  width="30%" height="30%" ></center>
+<div align="center">
+<img align="center" src="docs/frontpagerounded.png"  width="30%" height="30%" >
+</div>
 
 <div align="center">
 
