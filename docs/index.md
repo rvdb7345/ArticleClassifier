@@ -21,5 +21,11 @@ The documentation will cover the different aspects of the project, namely:
 
 This project was created as a 3-month Master's Thesis project for the program Information Studies - Data Science.
 The project was done in collaboration with Elsevier under the supervision of Bruno Martins, Chieling Yueh and Prof. dr.
-Paul
-Groth. 
+Paul Groth.
+
+## Contact
+
+If you have any questions or comments regarding this project, contact me through:
+
+- [LinkedIn](https://www.linkedin.com/in/robin-van-den-berg-091602149/)
+- Email: rvdb7345@gmail.com
